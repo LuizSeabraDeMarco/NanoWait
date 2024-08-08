@@ -1,0 +1,27 @@
+Metadata-Version: 2.1
+Name: nano_wait
+Version: 0.0.1
+Summary: Waiting Time Calculation for Automations Based on WiFi and PC Processing
+Author: Luiz Filipe Seabra de Marco
+Author-email: luizfilipeseabra@icloud.com
+License: MIT License
+Keywords: automation automação wifi wait
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: psutil
+Requires-Dist: pywifi
+
+# NanoWait
+
+**NanoWait** Ã© uma biblioteca Python para automaÃ§Ã£o de tarefas com ajuste dinÃ¢mico do tempo de espera com base na qualidade da conexÃ£o WiFi e no desempenho do computador. Ã‰ ideal para situaÃ§Ãµes onde o tempo de espera deve ser ajustado de acordo com a condiÃ§Ã£o da rede e do sistema para garantir que as operaÃ§Ãµes de automaÃ§Ã£o sejam executadas suavemente.
+
+**Requisitos**
+Antes de usar o NanoWait, vocÃª deve instalar as seguintes bibliotecas:
+
+    pywifi: Para verificar a qualidade do sinal WiFi.
+    psutil: Para monitorar o desempenho do sistema.
+    pyautogui: Para realizar aÃ§Ãµes de automaÃ§Ã£o no computador.
+
+**Principais FunÃ§Ãµes**
+wait_wifi: Ela deve ser passada junto com speed e ssid. Ela calcula o tempo de espera considerando o Wifi e o processamento do PC.
+wait_n_wifi: Ela deve ser passada junto com speed. Ela calcula o tempo de espera considerando o processamento do PC no momento.
