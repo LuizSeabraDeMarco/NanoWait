@@ -59,5 +59,3 @@ if __name__ == "__main__":
     automation = PCAutomation()
     wait_time_wifi = automation.wait_wifi(speed=5)
     wait_time_n_wifi = automation.wait_n_wifi(speed=5)
-    print(f"Wait Time (with WiFi): {wait_time_wifi} seconds")
-    print(f"Wait Time (without WiFi): {wait_time_n_wifi} seconds")
