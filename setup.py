@@ -4,7 +4,7 @@ with open("README.md", "r") as arq:
     readme = arq.read()
 
 setup(name='nano_wait',
-    version='0.0.3',
+    version='1.0.0',
     license='MIT License',
     author='Luiz Filipe Seabra de Marco',
     long_description=readme,

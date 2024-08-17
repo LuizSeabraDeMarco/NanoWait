@@ -16,10 +16,10 @@ pip install pywifi psutil
 Before using the Nano-Wait library, you need to create an instance of the PCAutomation class. This instance will provide methods to calculate wait times based on your PC's performance and WiFi signal strength.
 
 ```
-from biblioteca import PCAutomation
+import nano-wait
 
 # Initialize the automation
-automation = PCAutomation()
+automation = NanoWait()
 ```
 ## Parameters
 

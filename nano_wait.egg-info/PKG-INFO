@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: nano_wait
-Version: 0.0.3
+Version: 1.0.0
 Summary: Waiting Time Calculation for Automations Based on WiFi and PC Processing
 Author: Luiz Filipe Seabra de Marco
 Author-email: luizfilipeseabra@icloud.com
@@ -29,10 +29,10 @@ pip install pywifi psutil
 Before using the Nano-Wait library, you need to create an instance of the PCAutomation class. This instance will provide methods to calculate wait times based on your PC's performance and WiFi signal strength.
 
 ```
-from biblioteca import PCAutomation
+import nano-wait
 
 # Initialize the automation
-automation = PCAutomation()
+automation = NanoWait()
 ```
 ## Parameters
 

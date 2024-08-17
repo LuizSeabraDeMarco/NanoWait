@@ -11,7 +11,7 @@ speed = 10
 # Define the WiFi network name
 ssid = "VIVOFIBRA-B1E6"
 
-# Continue with the automation
+# Continue with the automations
 # Press the Windows key
 wait_time = automation.wait_n_wifi(speed=speed)
 print(f"Wait Time (without WiFi) for pressing Windows: {wait_time} seconds")
