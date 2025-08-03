@@ -1,10 +1,11 @@
 from setuptools import setup
 
-with open("README.md", "r") as arq:
+with open("README.md", "r", encoding="utf-8") as arq:
     readme = arq.read()
 
+
 setup(name='nano_wait',
-    version='1.2',
+    version='1.3',
     license='MIT License',
     author='Luiz Filipe Seabra de Marco',
     long_description=readme,
