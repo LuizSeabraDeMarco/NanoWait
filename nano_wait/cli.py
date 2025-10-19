@@ -1,7 +1,8 @@
 import argparse
 from . import wait as nano_wait_func
+from .core import NanoWait
 
-# Map presets para valores numéricos
+# Presets tradicionais
 SPEED_PRESETS = {
     "slow": 0.5,
     "normal": 1.5,
@@ -18,18 +19,25 @@ def main():
     parser.add_argument(
         "--speed",
         type=str,
-        default="normal",
-        help="Speed preset (slow, normal, fast, ultra)"
+        default="auto",
+        help="Speed preset (slow, normal, fast, ultra) or 'auto'"
     )
     parser.add_argument("--verbose", action="store_true", help="Show debug output")
     parser.add_argument("--log", action="store_true", help="Write result to log file")
 
     args = parser.parse_args()
 
-    # Converte preset de speed para float
-    speed_value = SPEED_PRESETS.get(args.speed.lower(), 1.5)
+    # Se auto, calcula baseado no PC + Wi-Fi
+    if args.speed.lower() == "auto":
+        nw = NanoWait()
+        pc_score = nw.get_pc_score()
+        wifi_score = nw.get_wifi_signal(args.wifi) if args.wifi else 5
+        risk_score = (pc_score + wifi_score) / 2
+        # Mapear risco para speed: mais risco -> menor speed
+        speed_value = max(0.5, min(5.0, risk_score))
+    else:
+        speed_value = SPEED_PRESETS.get(args.speed.lower(), 1.5)
 
-    # Chama função wait() do NanoWait
     nano_wait_func(
         t=args.time,
         wifi=args.wifi,
