@@ -1,56 +1,54 @@
+import platform
+import subprocess
 import pywifi
 import psutil
 import time
 
 class NanoWait:
     def __init__(self):
+        self.system = platform.system().lower()
         try:
-            self.wifi = pywifi.PyWiFi()
-            self.interface = self.wifi.interfaces()[0]
+            if self.system == "windows":
+                self.wifi = pywifi.PyWiFi()
+                self.interface = self.wifi.interfaces()[0]
+            else:
+                self.wifi = None
+                self.interface = None
         except Exception:
             self.wifi = None
             self.interface = None
 
     def get_wifi_signal(self, ssid: str) -> float:
-        """Get Wi-Fi signal quality (0–10)."""
-        if not self.interface:
-            return 0
+        """Get Wi-Fi signal strength (0–10) for Windows, macOS, or Linux."""
         try:
-            self.interface.scan()
-            time.sleep(1.5)
-            results = self.interface.scan_results()
-            for net in results:
-                if net.ssid == ssid:
-                    return max(0, min(10, (net.signal + 100) / 5))
-            return 0
-        except Exception:
-            return 0
+            if self.system == "windows" and self.interface:
+                self.interface.scan()
+                time.sleep(1.5)
+                results = self.interface.scan_results()
+                for net in results:
+                    if net.ssid == ssid:
+                        return max(0, min(10, (net.signal + 100) / 5))
+                return 0
 
-    def get_pc_score(self) -> float:
-        """Get average PC health score (0–10)."""
-        try:
-            cpu = psutil.cpu_percent(interval=0.5)
-            mem = psutil.virtual_memory().percent
-            cpu_score = max(0, min(10, 10 - cpu / 10))
-            mem_score = max(0, min(10, 10 - mem / 10))
-            return (cpu_score + mem_score) / 2
-        except Exception:
-            return 5
+            elif self.system == "darwin":  # macOS
+                result = subprocess.run(["/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport", "-I"], capture_output=True, text=True)
+                if ssid.lower() in result.stdout.lower():
+                    for line in result.stdout.splitlines():
+                        if "agrCtlRSSI" in line:
+                            signal = int(line.split(":")[1].strip())
+                            return max(0, min(10, (signal + 100) / 5))
+                return 0
 
-    def wait_wifi(self, speed: float, ssid: str) -> float:
-        """Adaptive factor using Wi-Fi + PC."""
-        try:
-            pc_score = self.get_pc_score()
-            wifi_score = self.get_wifi_signal(ssid)
-            combined = (pc_score + wifi_score) / 2
-            return max(0.5, (10 - combined) / speed)
-        except Exception:
-            return 1.0
+            elif self.system == "linux":
+                result = subprocess.run(["nmcli", "-t", "-f", "SSID,SIGNAL", "dev", "wifi"], capture_output=True, text=True)
+                for line in result.stdout.splitlines():
+                    if line.startswith(ssid):
+                        signal = int(line.split(":")[1])
+                        return max(0, min(10, signal / 10))
+                return 0
 
-    def wait_n_wifi(self, speed: float) -> float:
-        """Adaptive factor using only PC."""
-        try:
-            pc_score = self.get_pc_score()
-            return max(0.5, (10 - pc_score) / speed)
+            else:
+                return 0
+
         except Exception:
-            return 1.0
+            return 0
