@@ -1,0 +1,2 @@
+[console_scripts]
+nano-wait = nano_wait.cli:main
