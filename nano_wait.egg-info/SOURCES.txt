@@ -5,7 +5,6 @@ nano_wait/__init__.py
 nano_wait/__main__.py
 nano_wait/cli.py
 nano_wait/core.py
-nano_wait/exemplo.py
 nano_wait/nano_wait.py
 nano_wait/utils.py
 nano_wait/vision.py

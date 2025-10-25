@@ -5,3 +5,5 @@ pywifi
 pyautogui
 pytesseract
 pynput
+opencv-python
+numpy
