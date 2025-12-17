@@ -1,43 +1,45 @@
 # Nano-Wait
 
-## Automação Inteligente com Espera Adaptativa e Visão Computacional
+## Intelligent Automation with Adaptive Waiting and Computer Vision
 
 ---
 
-## Visão Geral
+## Overview
 
-Nano-Wait é uma biblioteca Python para automação de interfaces gráficas (GUI) que substitui o uso de time.sleep() por um sistema de Espera Adaptativa Inteligente, ajustando dinamicamente o tempo de espera com base:
+Nano-Wait is a Python library for automating graphical user interfaces (GUIs) that replaces the use of `time.sleep()` with an Intelligent Adaptive Waiting system, dynamically adjusting the wait time based on:
 
-- No desempenho do computador (CPU e memória)
+- Computer performance (CPU and memory)
 
-- Na qualidade do sinal Wi-Fi (quando disponível)
+- Wi-Fi signal quality (when available)
 
-- No nível de agressividade definido pelo usuário
+- User-defined aggressiveness level
 
-A partir da versão **3.0**, o Nano-Wait também inclui um Módulo de Visão Computacional (OCR) capaz de ler números diretamente da tela e tomar decisões automatizadas.
+From version **3.0**, Nano-Wait also includes a Computer Vision (OCR) module capable of reading numbers directly from the screen and making automated decisions.
 
-## 🚀 Por que não usar time.sleep()?
+## 🚀 Why not use `time.sleep()`?
 
-O time.sleep() é estático e “cego”:
-ele ignora se o sistema está sobrecarregado ou se a rede está lenta.
+`time.sleep()` is static and "blind":
 
-O Nano-Wait resolve isso aplicando um Fator de Ajuste Dinâmico, garantindo que o script:
+it ignores whether the system is overloaded or if the network is slow.
 
-- Não seja lento demais quando o sistema está rápido
+Nano-Wait solves this by applying a Dynamic Adjustment Factor, ensuring that the script:
 
-- Nem rápido demais a ponto de quebrar a automação
+- Is not too slow when the system is fast
 
---- 
+- Nor too fast to the point of breaking the automation
 
-## 📦 Instalação
-```
+---
+
+## 📦 Installation
+```bash
 pip install nano-wait
 ```
-- Dependências opcionais
+### Optional Dependencies
 
-- Para funcionamento completo do módulo Vision:
+For full functionality of the Vision module:
 
-- Tesseract OCR (obrigatório para OCR)
+
+- Tesseract OCR (required for OCR)
 
 - pytesseract
 
@@ -49,183 +51,186 @@ pip install nano-wait
 
 - psutil
 
-- pywifi (somente no Windows)
+- pywifi (Windows only)
 
-## ⚠️ O Nano-Wait não coleta dados de rede.
-Ele apenas lê métricas locais de sinal e desempenho do sistema operacional.
+## ⚠️ Nano-Wait does not collect network data.
 
-## 🧠 Módulo 1 — Espera Adaptativa (Smart Wait)
-Função principal: **wait()**
+It only reads local signal and operating system performance metrics.
 
-A função wait() é o substituto direto do time.sleep().
-```
+## 🧠 Module 1 — Adaptive Waiting (Smart Wait)
+
+Main function: **wait()**
+
+The wait() function is the direct replacement for time.sleep().
+
+```python
 from nano_wait import wait
 
 wait(5)
 ```
-Assinatura da função
-```
+Function Signature
+```python
 wait(
     t: float,
     wifi: str | None = None,
     speed: str | float = "normal",
     verbose: bool = False,
     log: bool = False
-) -> float
+)
+
 ```
 
-### Parâmetros
+### Parameters
 
-
-
-| Parâmetro | Valor padrão | Comportamento quando omitido |
+| Parameter | Default Value | Behavior when omitted |
 |---------|--------------|-------------------------------|
-| t | **obrigatório** | Define o tempo máximo de espera. Não pode ser omitido. |
-| wifi | `None` | O Nano-Wait ignora métricas de rede e calcula o fator apenas com base no desempenho local (CPU e memória). |
-| speed | `"normal"` | Utiliza agressividade balanceada, priorizando estabilidade sem perder desempenho. |
-| verbose | `False` | Nenhuma informação de cálculo é exibida no terminal. |
-| log| `False` | Nenhum arquivo de log é gerado (`nano_wait.log` não é criado nem atualizado). |
+| t | **required** | Defines the maximum wait time. Cannot be omitted. |
+| wifi | `None` | Nano-Wait ignores network metrics and calculates the factor based only on local performance (CPU and memory). |
+| speed | `"normal"` | Uses balanced aggressiveness, prioritizing stability without sacrificing performance. |
+| verbose | `False` | No calculation information is displayed in the terminal. |
+| log| `False` | No log file is generated (`nano_wait.log` is neither created nor updated). |
 
-
-## Exemplo com Wi-Fi
-```
+## Example with Wi-Fi
+```python
 wait(
     5,
-    wifi="MinhaRede_5G",
+    wifi="My5G_Network",
     speed="fast",
     verbose=True
 )
 ```
-## Exemplo sem Wi-Fi (somente hardware local)
-```
+## Example without Wi-Fi (local hardware only)
+```python
 wait(2, speed="ultra")
 ```
 
-## 🔬 Como o tempo de espera é calculado
+## 🔬 How wait time is calculated
 
-O Nano-Wait calcula um fator adaptativo com base em:
+Nano-Wait calculates an adaptive factor based on:
 
-- Uso de CPU
+- CPU usage
 
-- Uso de memória
+- Memory usage
 
-- Intensidade do sinal Wi-Fi (quando disponível)
+- Wi-Fi signal strength (when available)
 
-## Fórmula aplicada
-```
+## Formula applied
+```python
 wait_time = max(0.05, min(t / factor, t))
 ```
-## Regras de segurança
+## Safety rules
 
-- Piso: nunca espera menos que 50 ms
+- Floor: never wait less than 50 ms
 
-- Teto: nunca ultrapassa o tempo t original
+- Ceiling: never exceed the original t time
 
-- Evita uso excessivo de CPU
+- Avoids excessive CPU usage
 
-## 🧠 Módulo 2 — Vision (OCR e Decisão Visual)
+## 🧠 Module 2 — Vision (OCR and Visual Decision)
 
-O módulo Vision permite ler números da tela e tomar decisões automáticas.
+The Vision module allows you to read Display numbers on the screen and make automatic decisions.
 
-Classe principal
-```
+Main Class
+
+```python
 from nano_wait.vision import VisionMode
 ```
-### Modos Disponíveis
+### Available Modes
 
-| Modo | Descrição |
+| Mode | Description |
 |------|----------|
-| observe | Apenas lê e exibe os dados |
-| decision | Lê os dados e executa ações |
-| learn | Coleta padrões visuais (experimental) |
+| observe | Only reads and displays data |
+| decision | Reads data and executes actions |
+| learn | Collects visual patterns (experimental) |
 
+## 📸 Screen Region Capture
 
-## 📸 Captura de Região da Tela
+The user can manually mark regions:
 
-O usuário pode marcar regiões manualmente:
-```
+```python
 region = VisionMode.mark_region()
 ```
 
-O retorno é uma tupla:
+The return is a tuple:
+
 ```
-(x, y, largura, altura)
+(x, y, width, height)
 ```
-## 🔍 Exemplo Completo — Leitura e Decisão
-```
+## 🔍 Complete Example — Reading and Decision
+```python
 from nano_wait.vision import VisionMode
 
 vision = VisionMode(mode="decision")
 region = VisionMode.mark_region()
 vision.run(regions=[region])
+
 ```
-## Lógica interna (modo decision)
+## Internal Logic (decision mode)
 
-Se número detectado > 1000 → clique duplo
+- If detected number is greater than 1000 → double-click  
 
-Caso contrário → pular item
+Otherwise → skip item
 
-Essas ações podem ser facilmente customizadas no código.
+These actions can be easily customized in the code.
 
-## ⚙️ Pipeline Interno do Vision
+## ⚙️ Vision Internal Pipeline
 
-- Captura da região da tela (ImageGrab)
+- Screen region capture (ImageGrab)
 
-- Conversão para escala de cinza
+- Grayscale conversion
 
 - OCR via Tesseract
 
-- Extração numérica com Regex
+- Numerical extraction with Regex
 
-- Execução de ações automáticas
+- Execution of automated actions
 
-## 🧪 Modo Learn (Estado Atual)
+## 🧪 Learn Mode (Current State)
 
-- O modo learn atualmente:
+The learn mode currently:
 
-- Captura dados visuais repetidamente
+- Captures visual data repeatedly  
+- Serves as a basis for future versions with persistence
 
-- Serve como base para futuras versões com persistência
+📌 Note: The learn mode does not yet save models to disk.
 
-📌 Observação:
-O modo learn ainda não salva modelos em disco.
-Ele é experimental e focado em coleta de dados.
+It is experimental and focused on data collection.
 
-| Sistema | Wi-Fi | Observação            |
+| System | Wi-Fi | Note |
 | ------- | ----- | --------------------- |
-| Windows | ✅     | Usa pywifi            |
-| macOS   | ✅     | Usa comando airport   |
-| Linux   | ✅     | Usa nmcli             |
-| Outros  | ❌     | Apenas modo sem Wi-Fi |
+| Windows | ✅ | Uses pywifi |
+| macOS | ✅ | Uses airport command |
+| Linux | ✅ | Uses nmcli |
+| Others | ❌ | Only wireless mode |
 
-## 🛠 Casos de Uso Reais
+## 🛠 Real-World Use Cases
 
-- Bots de automação visual
+- Visual Automation Bots
 
-- Leitura de painéis legados
+- Legacy Dashboard Reading
 
-- Ajuste inteligente de cliques
+- Intelligent Click Adjustment
 
-- Automação baseada em OCR
+- OCR-Based Automation
 
-- RPA leve sem Selenium
+- Lightweight RPA without Selenium
 
-## 🤝 Contribuição
+## 🤝 Contribution
 
-- Fork o projeto
+- Fork the project
 
-- Crie uma branch (feature/minha-melhoria)
+- Create a branch (feature/my-improvement)
 
-- Envie um Pull Request
+- Submit a Pull Request
 
-## 📄 Licença
+## 📄 License
 
 MIT License
 
-## 👤 Autor
+## 👤 Author
 
 Luiz Seabra De Marco
 
-## 👤 Autor da documentação
+## 👤 Documentation Author
 
 Vitor Seabra De Marco

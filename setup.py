@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as arq:
 
 setup(
     name='nano_wait',
-    version='3.1.0',
+    version='3.1.3',
     license='MIT License',
     author='Luiz Filipe Seabra de Marco',
     author_email='luizfilipeseabra@icloud.com',
