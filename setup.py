@@ -7,8 +7,9 @@
 
 from setuptools import setup, find_packages
 
-# PT: Lê o README.md para descrição longa
-# EN: Read README.md for long description
+# ----------------------------------------
+# Read long description from README
+# ----------------------------------------
 with open("README.md", "r", encoding="utf-8") as arq:
     readme = arq.read()
 
@@ -16,31 +17,30 @@ setup(
     # ----------------------------------------
     # Basic metadata
     # ----------------------------------------
-    name="nano_wait",  # mantém compatibilidade
-    version="3.1.3",
+    name="nano_wait",  # mantém compatibilidade com versões anteriores
+    version="3.3.0",
 
     license="MIT",
     author="Luiz Filipe Seabra de Marco",
     author_email="luizfilipeseabra@icloud.com",
 
     description=(
-        "Adaptive waiting and smart automation library — "
-        "includes Wi-Fi, system context, and Vision Mode for screen-based decisions."
+        "Adaptive waiting and computer vision execution engine — "
+        "replaces time.sleep() with system-aware, vision-driven automation."
     ),
 
     long_description=readme,
     long_description_content_type="text/markdown",
 
     # ----------------------------------------
-    # SEARCH TAGS (PyPI keywords)
-    # PT: Essas são as 'tags' reais do PyPI
-    # EN: These are real PyPI search tags
+    # PyPI search keywords
     # ----------------------------------------
     keywords=[
         "automation",
-        "gui automation",
         "adaptive wait",
         "smart wait",
+        "execution engine",
+        "gui automation",
         "computer vision",
         "vision mode",
         "ocr",
@@ -48,9 +48,9 @@ setup(
         "rpa",
         "ai automation",
         "pyautogui",
-        "selenium",
+        "selenium alternative",
         "testing",
-        "wifi",
+        "wifi awareness",
         "system context",
     ],
 
@@ -61,23 +61,32 @@ setup(
     include_package_data=True,
 
     # ----------------------------------------
-    # Dependencies
+    # Core dependencies (always installed)
     # ----------------------------------------
     install_requires=[
-        "psutil",
-        "pywifi",
+        "psutil",     # CPU / memory context
+        "pywifi",     # optional Wi-Fi awareness (fails gracefully)
     ],
 
+    # ----------------------------------------
+    # Optional dependency groups
+    # ----------------------------------------
     extras_require={
-        # PT: Dependências opcionais para Vision Mode
-        # EN: Optional dependencies for Vision Mode
+        # Vision Mode (OCR + screen interaction)
         "vision": [
             "pyautogui",
             "pytesseract",
             "pynput",
             "opencv-python",
             "numpy",
-        ]
+            "Pillow",
+        ],
+
+        # Development & tests (NOT required for users)
+        "dev": [
+            "pytest",
+            "pytest-mock",
+        ],
     },
 
     # ----------------------------------------
@@ -90,11 +99,12 @@ setup(
     },
 
     # ----------------------------------------
-    # Classifiers (credibilidade + filtros)
+    # Metadata classifiers
     # ----------------------------------------
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
+        "Intended Audience :: Science/Research",
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Testing",
         "Topic :: Desktop Environment",
