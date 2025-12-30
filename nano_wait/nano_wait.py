@@ -1,7 +1,30 @@
 import time
+from typing import overload
 from .core import NanoWait
 from .utils import log_message, get_speed_value
-from .vision import VisionMode, VisualState
+from .exceptions import VisionTimeout
+
+
+_ENGINE = None
+
+
+def _engine():
+    global _ENGINE
+    if _ENGINE is None:
+        _ENGINE = NanoWait()
+    return _ENGINE
+
+
+@overload
+def wait(t: float, **kwargs) -> float: ...
+
+
+@overload
+def wait(*, until: str, **kwargs): ...
+
+
+@overload
+def wait(*, icon: str, **kwargs): ...
 
 
 def wait(
@@ -16,48 +39,34 @@ def wait(
     smart: bool = False,
     verbose: bool = False,
     log: bool = False
-) -> VisualState | float:
-    """
-    Smart wait — time OR visual state.
-
-    Examples:
-        wait(2)
-        wait(until="logged_in")
-        wait(icon="ok.png", timeout=10)
-    """
-
-    nw = NanoWait()
-    vision = VisionMode()
+):
+    nw = _engine()
 
     speed_value = (
         nw.smart_speed(wifi) if smart else get_speed_value(speed)
     )
 
-    start = time.time()
-
     # --------------------------------------
-    # 🔹 VISUAL WAIT
+    # VISUAL WAIT (lazy VisionMode)
     # --------------------------------------
 
     if until or icon:
+        from .vision import VisionMode
+
+        vision = VisionMode()
+        start = time.time()
+
         while time.time() - start < timeout:
 
             if until:
-                state = vision.detect_text_state(region)
-                if state.detected and state.name == until:
-                    if verbose:
-                        print(f"[NanoWait] 🧠 Estado '{until}' detectado")
-                    return state
+                state = vision.observe([region] if region else None)
+                if state == until:
+                    return vision.detect_icon("", region)  # dummy result
 
             if icon:
-                state = vision.detect_icon_state(icon, region)
-                if state.detected:
-                    if verbose:
-                        print(
-                            f"[NanoWait] 🧠 Ícone '{icon}' detectado "
-                            f"(conf={state.confidence})"
-                        )
-                    return state
+                result = vision.detect_icon(icon, region)
+                if result.detected:
+                    return result
 
             factor = (
                 nw.compute_wait_wifi(speed_value, wifi)
@@ -65,13 +74,12 @@ def wait(
                 nw.compute_wait_no_wifi(speed_value)
             )
 
-            poll = max(0.05, min(0.5, 1 / factor))
-            time.sleep(poll)
+            time.sleep(max(0.05, min(0.5, 1 / factor)))
 
-        raise TimeoutError("Visual state não detectado")
+        raise VisionTimeout("Visual condition not detected")
 
     # --------------------------------------
-    # 🔹 TIME WAIT (modo antigo)
+    # TIME WAIT
     # --------------------------------------
 
     factor = (
@@ -84,13 +92,13 @@ def wait(
 
     if verbose:
         print(
-            f"[NanoWait] ⏱ mode=time | speed={speed_value:.2f} | "
-            f"factor={factor:.2f} | wait={wait_time:.3f}s"
+            f"[NanoWait] speed={speed_value:.2f} "
+            f"factor={factor:.2f} wait={wait_time:.3f}s"
         )
 
     if log:
         log_message(
-            f"mode=time speed={speed_value:.2f} "
+            f"speed={speed_value:.2f} "
             f"factor={factor:.2f} wait={wait_time:.3f}s"
         )
 

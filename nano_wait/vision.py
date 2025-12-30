@@ -3,21 +3,13 @@ import json
 from pathlib import Path
 from dataclasses import dataclass
 
-import pytesseract
-import pyautogui
-from pynput.mouse import Controller, Button
-from PIL import ImageGrab, ImageOps
-
-import cv2
-import numpy as np
-
 
 # ======================================================
-# 🔹 VisualState — engine interna (NÃO quebra API)
+# 🔹 VisionResult — resultado público
 # ======================================================
 
 @dataclass
-class VisualState:
+class VisionResult:
     name: str
     detected: bool
     confidence: float = 0.0
@@ -25,14 +17,14 @@ class VisualState:
 
 
 # ======================================================
-# 🔹 VisionPattern — padrão aprendido
+# 🔹 VisionPattern
 # ======================================================
 
 @dataclass
 class VisionPattern:
     id: str
-    type: str               # "text" | "icon"
-    value: str              # texto OU caminho do ícone
+    type: str
+    value: str
     state: str
     region: tuple | None
     confidence: float = 1.0
@@ -40,7 +32,7 @@ class VisionPattern:
 
 
 # ======================================================
-# 🔹 PatternStore — memória determinística
+# 🔹 PatternStore
 # ======================================================
 
 class PatternStore:
@@ -56,17 +48,12 @@ class PatternStore:
 
         with open(self.path, "r") as f:
             data = json.load(f)
-            self.patterns = [
-                VisionPattern(**p) for p in data.get("patterns", [])
-            ]
+            self.patterns = [VisionPattern(**p) for p in data.get("patterns", [])]
 
     def _save(self):
         with open(self.path, "w") as f:
             json.dump(
-                {
-                    "version": 3,
-                    "patterns": [p.__dict__ for p in self.patterns]
-                },
+                {"version": 3, "patterns": [p.__dict__ for p in self.patterns]},
                 f,
                 indent=2
             )
@@ -86,58 +73,23 @@ class PatternStore:
 
 
 # ======================================================
-# 🔹 Template Matching (ícones)
-# ======================================================
-
-def _match_icon(template_path, screenshot, threshold=0.9):
-    template = cv2.imread(template_path, cv2.IMREAD_GRAYSCALE)
-    if template is None:
-        raise FileNotFoundError(f"Ícone não encontrado: {template_path}")
-
-    screenshot_gray = cv2.cvtColor(screenshot, cv2.COLOR_BGR2GRAY)
-    res = cv2.matchTemplate(
-        screenshot_gray,
-        template,
-        cv2.TM_CCOEFF_NORMED
-    )
-
-    _, max_val, _, max_loc = cv2.minMaxLoc(res)
-
-    if max_val >= threshold:
-        h, w = template.shape
-        return VisualState(
-            name=Path(template_path).stem,
-            detected=True,
-            confidence=round(float(max_val), 3),
-            meta={"position": (max_loc[0], max_loc[1], w, h), "type": "icon"}
-        )
-
-    return VisualState(Path(template_path).stem, False)
-
-
-# ======================================================
-# 🔹 VisionMode — API pública rica
+# 🔹 VisionMode
 # ======================================================
 
 class VisionMode:
-    """
-    Modos conceituais:
-      - observe
-      - learn
-      - decision
-    """
-
     def __init__(self, mode="observe", load_patterns=True):
         self.mode = mode
-        self.mouse = Controller()
         self.store = PatternStore() if load_patterns else None
-        print(f"🔍 VisionMode iniciado no modo '{self.mode}'")
 
-    # --------------------------------------------------
-    # 📸 Captura de tela
-    # --------------------------------------------------
+    # ------------------------
+    # Screen capture
+    # ------------------------
 
     def _capture_screen(self, region=None):
+        from PIL import ImageGrab
+        import cv2
+        import numpy as np
+
         if region:
             x, y, w, h = region
             img = ImageGrab.grab(bbox=(x, y, x + w, y + h))
@@ -146,20 +98,21 @@ class VisionMode:
 
         return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
-    # --------------------------------------------------
-    # 📸 OCR
-    # --------------------------------------------------
+    # ------------------------
+    # OCR
+    # ------------------------
 
     def capture_text(self, regions=None) -> dict:
+        from PIL import ImageGrab, ImageOps
+        import pytesseract
+
         results = {}
-        if not regions:
-            regions = [None]
+        regions = regions or [None]
 
         for idx, region in enumerate(regions):
             if region:
                 x, y, w, h = region
-                bbox = (x, y, x + w, y + h)
-                img = ImageGrab.grab(bbox=bbox)
+                img = ImageGrab.grab(bbox=(x, y, x + w, y + h))
             else:
                 img = ImageGrab.grab()
 
@@ -169,9 +122,9 @@ class VisionMode:
 
         return results
 
-    # --------------------------------------------------
-    # 🧠 OBSERVE
-    # --------------------------------------------------
+    # ------------------------
+    # Observe
+    # ------------------------
 
     def observe(self, regions=None) -> str:
         texts = self.capture_text(regions)
@@ -180,113 +133,35 @@ class VisionMode:
         if self.store:
             match = self.store.match_text(full_text)
             if match:
-                print(f"🧠 Estado reconhecido: {match.state}")
                 return match.state
 
         return "unknown"
 
-    # --------------------------------------------------
-    # 📚 LEARN (texto)
-    # --------------------------------------------------
+    # ------------------------
+    # Icon detection
+    # ------------------------
 
-    def learn(self, value: str, state: str, region=None, confidence=1.0):
-        if not self.store:
-            raise RuntimeError("PatternStore não está ativo")
+    def detect_icon(self, icon_path: str, region=None, threshold=0.9) -> VisionResult:
+        import cv2
+        import numpy as np
 
-        pattern = VisionPattern(
-            id=f"text_{state}_{len(self.store.patterns)}",
-            type="text",
-            value=value,
-            state=state,
-            region=region,
-            confidence=confidence
-        )
+        screen = self._capture_screen(region)
+        template = cv2.imread(icon_path, cv2.IMREAD_GRAYSCALE)
 
-        self.store.add_pattern(pattern)
-        print(f"📚 Texto aprendido: {state}")
+        if template is None:
+            raise FileNotFoundError(f"Icon not found: {icon_path}")
 
-    # --------------------------------------------------
-    # 📚 LEARN (ícone)
-    # --------------------------------------------------
+        screen_gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
+        res = cv2.matchTemplate(screen_gray, template, cv2.TM_CCOEFF_NORMED)
+        _, max_val, _, max_loc = cv2.minMaxLoc(res)
 
-    def learn_icon(self, icon_path: str, state: str, region=None, confidence=0.9):
-        if not self.store:
-            raise RuntimeError("PatternStore não está ativo")
+        if max_val >= threshold:
+            h, w = template.shape
+            return VisionResult(
+                name=Path(icon_path).stem,
+                detected=True,
+                confidence=round(float(max_val), 3),
+                meta={"position": (*max_loc, w, h)}
+            )
 
-        pattern = VisionPattern(
-            id=f"icon_{state}_{len(self.store.patterns)}",
-            type="icon",
-            value=icon_path,
-            state=state,
-            region=region,
-            confidence=confidence
-        )
-
-        self.store.add_pattern(pattern)
-        print(f"📚 Ícone aprendido: {state}")
-
-    # --------------------------------------------------
-    # ⏱️ WAIT FOR ICON (API ALTA)
-    # --------------------------------------------------
-
-    def wait_for_icon(
-        self,
-        icon_path: str,
-        region=None,
-        timeout=10.0,
-        threshold=0.9,
-        poll=0.3
-    ):
-        start = time.time()
-
-        while time.time() - start < timeout:
-            screen = self._capture_screen(region)
-            state = _match_icon(icon_path, screen, threshold)
-
-            if state.detected:
-                print(
-                    f"🧠 Ícone detectado: {icon_path} "
-                    f"(confiança={state.confidence})"
-                )
-                return state
-
-            time.sleep(poll)
-
-        raise TimeoutError(f"Ícone não encontrado em {timeout}s: {icon_path}")
-
-    # --------------------------------------------------
-    # ⚙️ ACTIONS
-    # --------------------------------------------------
-
-    def perform_action(self, action):
-        if action == "like_post":
-            self.mouse.click(Button.left, 2)
-            print("❤️ Ação: clique duplo.")
-        elif action == "skip_post":
-            self.mouse.move(100, 0)
-            print("⏭ Ação: pular.")
-        else:
-            print(f"⚙️ Ação desconhecida: {action}")
-
-    # --------------------------------------------------
-    # 📌 MARK REGION
-    # --------------------------------------------------
-
-    @staticmethod
-    def mark_region():
-        print("📌 Marque a região:")
-        input("Clique no canto superior esquerdo e pressione Enter...")
-        x1, y1 = pyautogui.position()
-
-        input("Clique no canto inferior direito e pressione Enter...")
-        x2, y2 = pyautogui.position()
-
-        x, y = min(x1, x2), min(y1, y2)
-        w, h = abs(x2 - x1), abs(y2 - y1)
-
-        if w == 0 or h == 0:
-            print("❌ Região inválida")
-            return None
-
-        print(f"✅ Região marcada: {x}, {y}, {w}, {h}")
-        return (x, y, w, h)
+        return VisionResult(Path(icon_path).stem, False)
