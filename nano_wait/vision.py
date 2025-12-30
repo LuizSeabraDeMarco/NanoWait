@@ -2,12 +2,19 @@ import time
 import json
 from pathlib import Path
 from dataclasses import dataclass
+from enum import Enum
 
+# ======================================================
+# 🔹 VisualState — enum de modos
+# ======================================================
+class VisualState(Enum):
+    OBSERVE = "observe"
+    DECISION = "decision"
+    LEARN = "learn"
 
 # ======================================================
 # 🔹 VisionResult — resultado público
 # ======================================================
-
 @dataclass
 class VisionResult:
     name: str
@@ -15,11 +22,9 @@ class VisionResult:
     confidence: float = 0.0
     meta: dict | None = None
 
-
 # ======================================================
 # 🔹 VisionPattern
 # ======================================================
-
 @dataclass
 class VisionPattern:
     id: str
@@ -30,11 +35,9 @@ class VisionPattern:
     confidence: float = 1.0
     hits: int = 1
 
-
 # ======================================================
 # 🔹 PatternStore
 # ======================================================
-
 class PatternStore:
     def __init__(self, path=None):
         self.path = path or Path.home() / ".nano-wait" / "vision_patterns.json"
@@ -71,20 +74,22 @@ class PatternStore:
         self.patterns.append(pattern)
         self._save()
 
-
 # ======================================================
 # 🔹 VisionMode
 # ======================================================
-
 class VisionMode:
     def __init__(self, mode="observe", load_patterns=True):
-        self.mode = mode
+        if isinstance(mode, str):
+            self.mode = VisualState(mode.lower())
+        elif isinstance(mode, VisualState):
+            self.mode = mode
+        else:
+            raise ValueError("mode must be a string or VisualState")
         self.store = PatternStore() if load_patterns else None
 
     # ------------------------
     # Screen capture
     # ------------------------
-
     def _capture_screen(self, region=None):
         from PIL import ImageGrab
         import cv2
@@ -101,7 +106,6 @@ class VisionMode:
     # ------------------------
     # OCR
     # ------------------------
-
     def capture_text(self, regions=None) -> dict:
         from PIL import ImageGrab, ImageOps
         import pytesseract
@@ -125,7 +129,6 @@ class VisionMode:
     # ------------------------
     # Observe
     # ------------------------
-
     def observe(self, regions=None) -> str:
         texts = self.capture_text(regions)
         full_text = " ".join(texts.values())
@@ -140,7 +143,6 @@ class VisionMode:
     # ------------------------
     # Icon detection
     # ------------------------
-
     def detect_icon(self, icon_path: str, region=None, threshold=0.9) -> VisionResult:
         import cv2
         import numpy as np
@@ -165,3 +167,41 @@ class VisionMode:
             )
 
         return VisionResult(Path(icon_path).stem, False)
+
+    # ------------------------
+    # Marca região (interativa)
+    # ------------------------
+    @staticmethod
+    def mark_region() -> tuple:
+        from pynput import mouse
+        print("Clique e arraste para marcar uma região...")
+
+        coords = {}
+
+        def on_click(x, y, button, pressed):
+            if pressed:
+                coords['x1'], coords['y1'] = x, y
+            else:
+                coords['x2'], coords['y2'] = x, y
+                return False
+
+        with mouse.Listener(on_click=on_click) as listener:
+            listener.join()
+
+        x1, y1 = coords['x1'], coords['y1']
+        x2, y2 = coords['x2'], coords['y2']
+        return (min(x1, x2), min(y1, y2), abs(x2 - x1), abs(y2 - y1))
+
+    # ------------------------
+    # Run por modo
+    # ------------------------
+    def run(self, regions=None):
+        if self.mode == VisualState.OBSERVE:
+            print("Running in OBSERVE mode")
+            return self.observe(regions)
+        elif self.mode == VisualState.DECISION:
+            print("Running in DECISION mode")
+            # Aqui poderia chamar algum método de decisão
+        elif self.mode == VisualState.LEARN:
+            print("Running in LEARN mode")
+            # Aqui poderia chamar algum método de aprendizado
