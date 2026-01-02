@@ -1,5 +1,5 @@
 # ============================================
-# setup.py — Nano-Wait
+# setup.py — Nano-Wait (CORE ONLY)
 #
 # PT: Configuração do pacote para PyPI
 # EN: PyPI package configuration file
@@ -17,41 +17,38 @@ setup(
     # ----------------------------------------
     # Basic metadata
     # ----------------------------------------
-    name="nano_wait",  # mantém compatibilidade com versões anteriores
-    version="3.3.0",
+    name="nano_wait",  # mantém compatibilidade
+    version="4.0.0",   # 🚨 BREAKING CHANGE (vision removido)
 
     license="MIT",
     author="Luiz Filipe Seabra de Marco",
     author_email="luizfilipeseabra@icloud.com",
 
     description=(
-        "Adaptive waiting and computer vision execution engine — "
-        "replaces time.sleep() with system-aware, vision-driven automation."
+        "Adaptive waiting and execution engine — "
+        "replaces time.sleep() with system-aware, deterministic waiting."
     ),
 
     long_description=readme,
     long_description_content_type="text/markdown",
 
     # ----------------------------------------
-    # PyPI search keywords
+    # PyPI search keywords (ATUALIZADOS)
     # ----------------------------------------
     keywords=[
         "automation",
         "adaptive wait",
         "smart wait",
         "execution engine",
-        "gui automation",
-        "computer vision",
-        "vision mode",
-        "ocr",
-        "screen automation",
-        "rpa",
-        "ai automation",
-        "pyautogui",
-        "selenium alternative",
+        "system-aware",
+        "deterministic automation",
+        "rpa core",
         "testing",
+        "performance",
+        "psutil",
         "wifi awareness",
         "system context",
+        "sleep replacement",
     ],
 
     # ----------------------------------------
@@ -61,28 +58,18 @@ setup(
     include_package_data=True,
 
     # ----------------------------------------
-    # Core dependencies (always installed)
+    # Core dependencies (ONLY core)
     # ----------------------------------------
     install_requires=[
-        "psutil",     # CPU / memory context
-        "pywifi",     # optional Wi-Fi awareness (fails gracefully)
+        "psutil",   # CPU / memory context
+        "pywifi",   # optional Wi-Fi awareness (fails gracefully)
     ],
 
     # ----------------------------------------
     # Optional dependency groups
     # ----------------------------------------
     extras_require={
-        # Vision Mode (OCR + screen interaction)
-        "vision": [
-            "pyautogui",
-            "pytesseract",
-            "pynput",
-            "opencv-python",
-            "numpy",
-            "Pillow",
-        ],
-
-        # Development & tests (NOT required for users)
+        # Development & tests (NOT for end users)
         "dev": [
             "pytest",
             "pytest-mock",
@@ -107,8 +94,6 @@ setup(
         "Intended Audience :: Science/Research",
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Testing",
-        "Topic :: Desktop Environment",
-        "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Utilities",
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",

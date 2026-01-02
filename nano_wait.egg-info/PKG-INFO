@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: nano_wait
-Version: 3.3.0
+Version: 3.3.2
 Summary: Adaptive waiting and computer vision execution engine — replaces time.sleep() with system-aware, vision-driven automation.
 Author: Luiz Filipe Seabra de Marco
 Author-email: luizfilipeseabra@icloud.com
