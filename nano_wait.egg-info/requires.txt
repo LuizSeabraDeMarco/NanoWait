@@ -4,11 +4,3 @@ pywifi
 [dev]
 pytest
 pytest-mock
-
-[vision]
-pyautogui
-pytesseract
-pynput
-opencv-python
-numpy
-Pillow

@@ -9,7 +9,6 @@ nano_wait/exceptions.py
 nano_wait/nano_wait.py
 nano_wait/utils.py
 nano_wait/vision.py
-nano_wait/vision_state.py
 nano_wait.egg-info/PKG-INFO
 nano_wait.egg-info/SOURCES.txt
 nano_wait.egg-info/dependency_links.txt
@@ -17,7 +16,5 @@ nano_wait.egg-info/entry_points.txt
 nano_wait.egg-info/requires.txt
 nano_wait.egg-info/top_level.txt
 tests/test_architecture_integration.py
-tests/test_vision_mode.py
-tests/test_vision_ocr.py
 tests/test_wait_core.py
 tests/test_wait_edge_cases.py

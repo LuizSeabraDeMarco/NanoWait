@@ -16,7 +16,7 @@ class NanoWait:
             self.interface = None
 
     # ------------------------
-    # Context scores
+    # Context collection
     # ------------------------
 
     def get_pc_score(self) -> float:
@@ -69,26 +69,59 @@ class NanoWait:
 
         return 5.0
 
+    def snapshot_context(self, ssid: str | None = None) -> dict:
+        """
+        Captures an immutable snapshot of system context.
+        This is the foundation for deterministic explain mode.
+        """
+        pc = self.get_pc_score()
+        wifi = self.get_wifi_signal(ssid) if ssid else None
+
+        return {
+            "pc_score": pc,
+            "wifi_score": wifi
+        }
+
     # ------------------------
     # Smart Context
     # ------------------------
 
     def smart_speed(self, ssid: str | None = None) -> float:
-        pc = self.get_pc_score()
-        wifi = self.get_wifi_signal(ssid) if ssid else 5.0
+        context = self.snapshot_context(ssid)
+        pc = context["pc_score"]
+        wifi = context["wifi_score"] if context["wifi_score"] is not None else 5.0
+
         risk = (pc + wifi) / 2
         return round(max(0.5, min(5.0, risk)), 2)
 
     # ------------------------
-    # Wait computation
+    # Wait computation (pure math)
     # ------------------------
 
-    def compute_wait_wifi(self, speed: float, ssid: str | None = None) -> float:
-        pc = self.get_pc_score()
-        wifi = self.get_wifi_signal(ssid)
+    def compute_wait_wifi(
+        self,
+        speed: float,
+        ssid: str | None = None,
+        *,
+        context: dict | None = None
+    ) -> float:
+        if context is None:
+            context = self.snapshot_context(ssid)
+
+        pc = context["pc_score"]
+        wifi = context["wifi_score"] if context["wifi_score"] is not None else 5.0
+
         risk = (pc + wifi) / 2
         return max(0.2, (10 - risk) / speed)
 
-    def compute_wait_no_wifi(self, speed: float) -> float:
-        pc = self.get_pc_score()
+    def compute_wait_no_wifi(
+        self,
+        speed: float,
+        *,
+        context: dict | None = None
+    ) -> float:
+        if context is None:
+            context = self.snapshot_context()
+
+        pc = context["pc_score"]
         return max(0.2, (10 - pc) / speed)
