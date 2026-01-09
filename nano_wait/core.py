@@ -1,8 +1,30 @@
+# core.py
+from dataclasses import dataclass
+from typing import Optional
+
+@dataclass(frozen=True)
+class ExecutionProfile:
+    name: str
+    aggressiveness: float      # multiplicador para intervalos adaptativos
+    tolerance: float           # permissividade a falhas temporárias
+    poll_interval: float       # base para time.sleep
+    verbose: bool              # mostra debug automaticamente
+
+# Perfis padrão
+PROFILES = {
+    "ci": ExecutionProfile("ci", aggressiveness=0.5, tolerance=0.9, poll_interval=0.05, verbose=True),
+    "testing": ExecutionProfile("testing", aggressiveness=1.0, tolerance=0.7, poll_interval=0.1, verbose=True),
+    "rpa": ExecutionProfile("rpa", aggressiveness=2.0, tolerance=0.5, poll_interval=0.2, verbose=False),
+    "default": ExecutionProfile("default", aggressiveness=1.0, tolerance=0.8, poll_interval=0.1, verbose=False)
+}
+
 class NanoWait:
-    def __init__(self):
+    def __init__(self, profile: Optional[str] = None):
         import platform
         self.system = platform.system().lower()
+        self.profile = PROFILES.get(profile, PROFILES["default"])
 
+        # Wi-Fi setup
         if self.system == "windows":
             try:
                 import pywifi
@@ -125,3 +147,13 @@ class NanoWait:
 
         pc = context["pc_score"]
         return max(0.2, (10 - pc) / speed)
+
+    # ------------------------
+    # Apply Execution Profile
+    # ------------------------
+
+    def apply_profile(self, base_wait: float) -> float:
+        """
+        Adjusts wait time according to current execution profile.
+        """
+        return base_wait * self.profile.aggressiveness

@@ -1,65 +1,59 @@
-Com certeza! Analisei a documentação da nova funcionalidade "Explain Mode" e o `README.md` existente. Preparei uma versão atualizada do `README.md` em português, integrando as novidades do "Explain Mode" de forma clara e organizada, seguindo a estrutura e o tom do documento original.
-
-Aqui está a proposta de atualização para o `README.md`:
-
----
-
-# NanoWait: O Motor de Espera Adaptativo para Python
+# NanoWait: The Adaptive Wait Engine for Python
 
 [![PyPI version](https://img.shields.io/pypi/v/nano_wait.svg)](https://pypi.org/project/nano_wait/)
 [![License](https://img.shields.io/pypi/l/nano_wait.svg)](https://github.com/luizfilipe/NanoWait/blob/main/LICENSE)
 [![Python Version](https://img.shields.io/pypi/pyversions/nano_wait.svg)](https://pypi.org/project/nano_wait/)
 
-## 🚀 O que é o NanoWait?
+## 🚀 What is NanoWait?
 
-**NanoWait** é um motor de espera de execução, determinístico e adaptativo, projetado para substituir o `time.sleep()` padrão do Python.
+**NanoWait** is a deterministic and adaptive execution wait engine designed to replace Python's standard `time.sleep()`. Instead of waiting for a fixed duration, NanoWait dynamically adjusts the wait time based on **system load (CPU/RAM)** and, optionally, **Wi-Fi signal strength**, ensuring automation scripts remain reliable even in slow or overloaded environments.
 
-Em vez de aguardar um tempo fixo, o NanoWait ajusta dinamicamente a duração da espera com base na **carga do sistema (CPU/RAM)** e, opcionalmente, na **força do sinal Wi-Fi**, garantindo que scripts de automação permaneçam confiáveis mesmo em ambientes lentos ou sobrecarregados.
+With the introduction of **Execution Profiles**, NanoWait now offers a semantic layer to manage wait behavior, allowing you to define the operational context clearly and consistently.
 
-> **Em resumo:** você solicita um tempo base (ex: `wait(5)`), e o NanoWait garante uma *espera segura e ciente do contexto*, que nunca excede o tempo solicitado e nunca fica abaixo de um piso mínimo de execução.
+> **In summary:** you request a base time (e.g., `wait(5)`), and NanoWait ensures a *safe and context-aware wait* that never exceeds the requested time and never falls below a minimum execution floor.
 
 ---
 
-## 🛠️ Instalação
+## 🛠️ Installation
 
 ```bash
 pip install nano_wait
 ```
 
-### Módulo Opcional — Vision Mode
+### Optional Module — Vision Mode
 
-A espera visual (detecção de ícones/estados) foi intencionalmente movida para um pacote dedicado para manter o NanoWait leve e determinístico.
+Visual waiting (icon/state detection) has been intentionally moved to a dedicated package to keep NanoWait lightweight and deterministic.
 
 ```bash
 pip install nano-wait-vision
 ```
 
-Se o Vision Mode não estiver instalado, o NanoWait levantará um erro claro em tempo de execução ao solicitar funcionalidades visuais.
+If Vision Mode is not installed, NanoWait will raise a clear runtime error when visual functionalities are requested.
 
 ---
 
-## 💡 Guia Rápido
+## 💡 Quick Guide
 
 ```python
 from nano_wait import wait
 import time
 
-# Sleep padrão
+# Standard sleep
 start = time.time()
 time.sleep(5)
 print(f"time.sleep(): {time.time() - start:.2f}s")
 
-# Espera adaptativa
+# Adaptive wait
 start = time.time()
 wait(5)
 print(f"nano_wait.wait(): {time.time() - start:.2f}s")
 ```
 
-O NanoWait **nunca espera mais do que o tempo base solicitado** e aplica um atraso interno mínimo de **50 ms** para prevenir o uso excessivo de CPU.
+NanoWait **never waits longer than the requested base time** and applies a minimum internal delay of **50 ms** to prevent excessive CPU usage.
 
 ---
 
-## ⚙️ API Principal
+## ⚙️ Core API
 
 ```python
 wait(
@@ -70,31 +64,177 @@ wait(
     smart: bool = False,
     explain: bool = False,
     verbose: bool = False,
-    log: bool = False
-) -> float | dict
+    log: bool = False,
+    profile: str | None = None
+) -> float | ExplainReport
 ```
 
-### Parâmetros
+### Parameters
 
-| Parâmetro | Descrição                                                                 |
+| Parameter | Description                                                                 |
 |-----------|---------------------------------------------------------------------------|
-| `t`       | Tempo base em segundos (requerido para espera baseada em tempo).          |
-| `wifi`    | SSID da rede Wi-Fi para avaliar a qualidade do sinal (opcional).          |
-| `speed`   | Predefinição de velocidade de execução ou valor numérico.                 |
-| `smart`   | Ativa o Smart Context Mode (cálculo dinâmico de velocidade).              |
-| `explain` | Ativa o Explain Mode, que retorna um relatório detalhado da decisão.      |
-| `verbose` | Imprime informações de depuração no `stdout`.                             |
-| `log`     | Escreve dados de execução em `nano_wait.log`.                             |
+| `t`       | Base time in seconds (required for time-based waiting).                   |
+| `wifi`    | Wi-Fi network SSID to assess signal quality (optional).                   |
+| `speed`   | Execution speed preset or numeric value.                                  |
+| `smart`   | Activates Smart Context Mode (dynamic speed calculation).                 |
+| `explain` | Activates Explain Mode, which returns a detailed decision report.         |
+| `verbose` | Prints debug information to `stdout`.                                     |
+| `log`     | Writes execution data to `nano_wait.log`.                                 |
+| `profile` | Selects a predefined execution profile (e.g., "ci", "rpa").             |
+
+---
+
+## 🧩 Execution Profiles (New Feature)
+
+Execution Profiles introduce a semantic layer over NanoWait's adaptive wait engine. Instead of manually adjusting isolated parameters (speed, aggressiveness, verbosity), you can select an execution profile that represents the operational context in which your code is running — such as continuous integration (CI), automated tests, or robotic process automation (RPA).
+
+Each profile encapsulates a coherent set of decisions, ensuring consistency, readability, and reduced cognitive complexity for the user.
+
+### 🎯 Why use Execution Profiles?
+
+Without profiles, scripts tend to accumulate fragile adjustments:
+
+```python
+wait(2, speed="fast", smart=True, verbose=True)
+```
+
+With Execution Profiles, the focus shifts to the environment, not mechanical details:
+
+```python
+wait(2, profile="ci")
+```
+
+### ⚙️ How to use
+
+Basic usage:
+
+```python
+from nano_wait import wait
+
+# Executes the wait using the Continuous Integration profile
+wait(2, profile="ci")
+```
+
+If no profile is specified, NanoWait uses the default profile.
+
+### 🧪 Available Profiles
+
+| Profile   | Recommended Use                      | General Behavior                        |
+|-----------|--------------------------------------|-----------------------------------------|
+| `ci`      | CI/CD Pipelines                      | Aggressive waits, verbose enabled       |
+| `testing` | Local Automated Tests                | Balance between speed and stability     |
+| `rpa`     | Interface and Human Workflow Automation | More conservative waits                 |
+| `default` | Generic Execution                    | Balanced behavior                       |
+
+### 🧠 What does an Execution Profile control?
+
+Internally, each profile defines:
+
+*   Aggressiveness of time adaptation
+*   Tolerance to transient instabilities
+*   Polling interval
+*   Default verbosity (automatic debug)
+
+These parameters are applied deterministically to each execution.
+
+### 🔄 Integration with Smart Context Mode
+
+Execution Profiles do not replace Smart Context Mode — they complement each other.
+
+```python
+wait(
+    t=3,
+    smart=True,
+    profile="testing"
+)
+```
+
+In this example:
+
+*   Smart Mode calculates the optimal speed based on the system
+*   The Execution Profile adjusts the overall wait behavior
+
+### 🧪 Comparative Example
+
+Without Execution Profiles:
+
+```python
+wait(
+    t=2,
+    speed="fast",
+    smart=True,
+    verbose=True
+)
+```
+
+With Execution Profiles:
+
+```python
+wait(
+    t=2,
+    profile="ci"
+)
+```
+
+The second example is more readable, more consistent, and less fragile to future changes.
+
+### 🖥️ Command Line Interface (CLI)
+
+Execution Profiles are also available in the CLI:
+
+```bash
+nano-wait 2 --profile ci
+```
+
+With Explain Mode:
+
+```bash
+nano-wait 2 --profile testing --explain
+```
+
+### 🔍 Execution Profiles in Explain Mode
+
+When Explain Mode is active, the applied profile implicitly appears in the final wait behavior:
+
+```python
+report = wait(
+    t=1.5,
+    profile="rpa",
+    explain=True
+)
+
+print(report.explain())
+```
+
+Example output:
+
+```
+Requested time: 1.5s
+Final wait time: 1.32s
+Speed input: normal → 1.5
+Smart mode: False
+CPU score: 6.1
+Adaptive factor: 1.08
+Execution profile: rpa
+```
+
+### 🧠 Design Philosophy
+
+Execution Profiles reflect a core principle of NanoWait:
+
+> Code should express intent, not mechanical adjustments.
+
+By moving time and tolerance decisions to semantic profiles, NanoWait promotes more robust, predictable, and maintainable APIs — especially in complex automated systems.
 
 ---
 
 ## 🔬 Explain Mode (`explain=True`)
 
-O Explain Mode torna o mecanismo de espera do NanoWait determinístico, auditável e explicável. Ele não altera o comportamento da espera, mas **revela como a decisão foi tomada**.
+Explain Mode makes NanoWait's waiting mechanism deterministic, auditable, and explainable. It does not alter the wait behavior but **reveals how the decision was made**.
 
-Quando ativado, o `wait()` retorna um dicionário (`Explain Report`) com todos os fatores usados no cálculo, ideal para depuração, auditoria e benchmarks.
+When activated, `wait()` returns a dictionary (`Explain Report`) with all factors used in the calculation, ideal for debugging, auditing, and benchmarking.
 
-### Exemplo de Uso em Código
+### Code Example
 
 ```python
 from nano_wait import wait
@@ -109,114 +249,115 @@ report = wait(
 print(report)
 ```
 
-**Estrutura do Relatório:**
+**Report Structure:**
 
 ```json
 {
-    "requested_time": 1.5,
-    "final_time": 1.08,
-    "speed": "fast",
-    "smart": true,
-    "cpu_score": 5.8,
-    "adaptive_factor": 1.39,
-    "min_floor": false,
-    "max_cap": false,
-    "timestamp": "2026-01-06T23:59:25"
+  "requested_speed": "fast",
+  "speed_value": 0.5,
+  "adaptive_factor": 1.39,
+  "base_seconds": 0.5,
+  "adjusted_seconds": 0.695,
+  "floor_applied": true,
+  "final_seconds": 0.7,
+  "profile": "fast",
+  "system_load": 0.62
 }
+
 ```
 
 ---
 
 ## 🧠 Smart Context Mode (`smart=True`)
 
-Quando ativado, o NanoWait calcula a velocidade de execução automaticamente com base na **pontuação média do contexto do sistema**.
+When activated, NanoWait automatically calculates the execution speed based on the **average system context score**.
 
 ```python
 wait(10, smart=True, verbose=True)
 ```
 
-Exemplo de saída:
+Example output:
 
 ```
 [NanoWait] speed=3.42 factor=2.05 wait=4.878s
 ```
 
-### Como a Velocidade Inteligente Funciona
+### How Smart Speed Works
 
-*   **PC Score** → derivado do uso de CPU e memória.
-*   **Wi-Fi Score** → derivado do RSSI (se ativado).
+*   **PC Score** → derived from CPU and memory usage.
+*   **Wi-Fi Score** → derived from RSSI (if activated).
 
-A **Velocidade Inteligente** final é:
+The final **Smart Speed** is:
 
 ```
 speed = clamp( (pc_score + wifi_score) / 2 , 0.5 , 5.0 )
 ```
 
-Este valor é usado diretamente como o fator de velocidade de execução.
+This value is used directly as the execution speed factor.
 
 ---
 
-## 🌐 Consciência de Wi-Fi
+## 🌐 Wi-Fi Awareness
 
-Se sua automação depende da estabilidade da rede, o NanoWait pode adaptar o comportamento de espera com base na força do sinal Wi-Fi.
+If your automation depends on network stability, NanoWait can adapt its waiting behavior based on Wi-Fi signal strength.
 
 ```python
-wait(5, wifi="MinhaRede_5G")
+wait(5, wifi="MyNetwork_5G")
 ```
 
-Plataformas suportadas:
+Supported platforms:
 
 *   Windows (`pywifi`)
 *   macOS (`airport`)
 *   Linux (`nmcli`)
 
-Se os dados do Wi-Fi não puderem ser lidos, o NanoWait recorre a valores neutros de forma segura.
+If Wi-Fi data cannot be read, NanoWait safely defaults to neutral values.
 
 ---
 
-## ⚡ Predefinições de Velocidade de Execução
+## ⚡ Execution Speed Presets
 
-O NanoWait suporta predefinições simbólicas de velocidade, bem como valores numéricos.
+NanoWait supports symbolic speed presets, as well as numeric values.
 
-| Predefinição | Valor Interno |
-|--------------|---------------|
-| `slow`       | 0.8           |
-| `normal`     | 1.5           |
-| `fast`       | 3.0           |
-| `ultra`      | 6.0           |
+| Preset       | Internal Value |
+|--------------|----------------|
+| `slow`       | 0.8            |
+| `normal`     | 1.5            |
+| `fast`       | 3.0            |
+| `ultra`      | 6.0            |
 
 ```python
 wait(2, speed="fast")
 wait(2, speed=2.2)
 ```
 
-Velocidades mais altas reduzem o tempo de espera nominal de forma mais agressiva.
+Higher speeds reduce the nominal wait time more aggressively.
 
 ---
 
-## 🖥️ Interface de Linha de Comando (CLI)
+## 🖥️ Command Line Interface (CLI)
 
-O NanoWait pode ser executado diretamente do terminal:
+NanoWait can be executed directly from the terminal:
 
 ```bash
 nano-wait <time> [options]
 ```
 
-**Exemplo:**
+**Example:**
 
 ```bash
 nano-wait 5 --smart --verbose
 ```
 
-**Novo no CLI: `--explain`**
+**New in CLI: `--explain` and `--profile`**
 
-Use a flag `--explain` para obter o relatório de explicação diretamente no terminal.
+Use the `--explain` and `--profile` flags to get the explanation report and apply profiles directly in the terminal.
 
 ```bash
-python -m nano_wait.cli 1.5 --speed fast --explain
+python -m nano_wait.cli 1.5 --speed fast --explain --profile ci
 ```
 
-**Saída Esperada:**
+**Expected Output:**
 
 ```
 --- NanoWait Explain Report ---
@@ -229,9 +370,10 @@ Adaptive factor: 1.39
 Minimum floor applied: False
 Maximum cap applied: False
 Timestamp: 2026-01-06T23:59:25
+Execution profile: ci
 ```
 
-**Flags disponíveis:**
+**Available Flags:**
 
 *   `--wifi SSID`
 *   `--speed slow|normal|fast|ultra`
@@ -239,39 +381,40 @@ Timestamp: 2026-01-06T23:59:25
 *   `--explain`
 *   `--verbose`
 *   `--log`
+*   `--profile ci|testing|rpa|default`
 
 ---
 
-## 👁️ Espera Visual (Opcional)
+## 👁️ Visual Waiting (Optional)
 
-Funcionalidades de espera visual (ícones, estados de UI) são carregadas sob demanda e requerem:
+Visual waiting functionalities (icons, UI states) are loaded on demand and require:
 
 ```bash
 pip install nano-wait-vision
 ```
 
-Se não instalado, o NanoWait levanta um `ImportError` claro explicando como habilitar a funcionalidade.
+If not installed, NanoWait raises a clear `ImportError` explaining how to enable the functionality.
 
 ---
 
-## 🧪 Garantias de Design
+## 🧪 Design Guarantees
 
-*   Comportamento determinístico
-*   Sem *busy-waiting* (espera ocupada)
-*   Caminhos de fallback seguros
-*   Suporte multiplataforma
-*   API pronta para produção
-
----
-
-## 🤝 Contribuição e Licença
-
-O NanoWait é de código aberto e licenciado sob a MIT License.
-
-Issues, discussões e pull requests são bem-vindos.
-
-**Autor:** Luiz Filipe Seabra de Marco
-**Licença:** MIT
+*   Deterministic behavior
+*   No busy-waiting
+*   Safe fallback paths
+*   Cross-platform support
+*   Production-ready API
 
 ---
-Posso ajudar com mais alguma coisa? Por exemplo, podemos traduzir o restante da documentação ou preparar os comandos para atualizar o pacote no PyPI.
+
+## 🤝 Contribution and License
+
+NanoWait is open-source and licensed under the MIT License. Your contribution is highly welcome!
+
+We encourage the community to interact and collaborate. If you find a bug, have a suggestion for improvement, or want to discuss new features, please use GitHub:
+
+*   **Report an issue (Issues):** [https://github.com/luizfilipe/NanoWait/issues](https://github.com/LuizSeabraDeMarco/NanoWait/issues)
+*   **Discussions:** [https://github.com/luizfilipe/NanoWait/discussions](https://github.com/LuizSeabraDeMarco/NanoWait/discussions)
+
+**Author:** Luiz Filipe Seabra de Marco
+**License:** MIT

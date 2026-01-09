@@ -1,22 +1,20 @@
+# nano_wait.py
 import time
 from typing import overload
 from datetime import datetime
 
-from .core import NanoWait
+from .core import NanoWait, PROFILES
 from .utils import log_message, get_speed_value
 from .exceptions import VisionTimeout
 from .explain import ExplainReport
 
-
 _ENGINE = None
-
 
 def _engine():
     global _ENGINE
     if _ENGINE is None:
         _ENGINE = NanoWait()
     return _ENGINE
-
 
 # --------------------------------------
 # Public API
@@ -46,18 +44,26 @@ def wait(
     smart: bool = False,
     verbose: bool = False,
     log: bool = False,
-    explain: bool = False
+    explain: bool = False,
+    profile: str | None = None  # <-- Novo argumento de Execution Profile
 ):
     """
-    Adaptive deterministic wait with optional explainable execution.
+    Adaptive deterministic wait with optional explainable execution and execution profiles.
     """
 
     nw = _engine()
 
     # ------------------------
+    # Apply execution profile
+    # ------------------------
+    if profile:
+        nw.profile = PROFILES.get(profile, PROFILES["default"])
+    # Verbose do perfil prevalece se não houver verbose manual
+    verbose = verbose or nw.profile.verbose
+
+    # ------------------------
     # Context snapshot (single read)
     # ------------------------
-
     context = nw.snapshot_context(wifi)
     cpu_score = context["pc_score"]
     wifi_score = context["wifi_score"]
@@ -65,15 +71,11 @@ def wait(
     # ------------------------
     # Speed resolution
     # ------------------------
-
-    speed_value = (
-        nw.smart_speed(wifi) if smart else get_speed_value(speed)
-    )
+    speed_value = nw.smart_speed(wifi) if smart else get_speed_value(speed)
 
     # --------------------------------------
     # VISUAL WAIT (VisionMode)
     # --------------------------------------
-
     if until or icon:
         from .vision import VisionMode
 
@@ -93,65 +95,50 @@ def wait(
                     return result
 
             factor = (
-                nw.compute_wait_wifi(
-                    speed_value,
-                    wifi,
-                    context=context
-                )
+                nw.compute_wait_wifi(speed_value, wifi, context=context)
                 if wifi else
-                nw.compute_wait_no_wifi(
-                    speed_value,
-                    context=context
-                )
+                nw.compute_wait_no_wifi(speed_value, context=context)
             )
 
-            time.sleep(max(0.05, min(0.5, 1 / factor)))
+            # aplica agressividade do perfil
+            interval = max(0.05, min(0.5, 1 / factor))
+            interval = nw.apply_profile(interval)
+            time.sleep(interval)
 
         raise VisionTimeout("Visual condition not detected")
 
     # --------------------------------------
     # TIME WAIT
     # --------------------------------------
-
     factor = (
-        nw.compute_wait_wifi(
-            speed_value,
-            wifi,
-            context=context
-        )
+        nw.compute_wait_wifi(speed_value, wifi, context=context)
         if wifi else
-        nw.compute_wait_no_wifi(
-            speed_value,
-            context=context
-        )
+        nw.compute_wait_no_wifi(speed_value, context=context)
     )
 
-    raw_wait = t / factor
-    wait_time = round(max(0.05, min(raw_wait, t)), 3)
+    raw_wait = t / factor if t else factor
+    wait_time = round(max(0.05, min(raw_wait, t or raw_wait)), 3)
+
+    # aplica Execution Profile
+    wait_time = nw.apply_profile(wait_time)
 
     min_floor_applied = raw_wait < 0.05
-    max_cap_applied = raw_wait > t
+    max_cap_applied = t is not None and raw_wait > t
 
     # ------------------------
     # Verbose / log
     # ------------------------
-
     if verbose:
-        print(
-            f"[NanoWait] speed={speed_value:.2f} "
-            f"factor={factor:.2f} wait={wait_time:.3f}s"
-        )
+        print(f"[NanoWait | {nw.profile.name}] speed={speed_value:.2f} "
+              f"factor={factor:.2f} wait={wait_time:.3f}s")
 
     if log:
-        log_message(
-            f"speed={speed_value:.2f} "
-            f"factor={factor:.2f} wait={wait_time:.3f}s"
-        )
+        log_message(f"[NanoWait | {nw.profile.name}] speed={speed_value:.2f} "
+                    f"factor={factor:.2f} wait={wait_time:.3f}s")
 
     # ------------------------
     # Explain report (optional)
     # ------------------------
-
     report = None
     if explain:
         report = ExplainReport(
@@ -171,6 +158,5 @@ def wait(
     # ------------------------
     # Execute wait
     # ------------------------
-
     time.sleep(wait_time)
     return report if explain else wait_time

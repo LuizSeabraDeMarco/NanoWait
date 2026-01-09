@@ -1,6 +1,6 @@
+# cli.py
 import argparse
 from .nano_wait import wait
-
 
 def main():
     parser = argparse.ArgumentParser(
@@ -10,7 +10,6 @@ def main():
     # ------------------------
     # Core arguments
     # ------------------------
-
     parser.add_argument(
         "time",
         type=float,
@@ -51,11 +50,20 @@ def main():
     # ------------------------
     # Explain mode
     # ------------------------
-
     parser.add_argument(
         "--explain",
         action="store_true",
         help="Explain how the wait time was calculated"
+    )
+
+    # ------------------------
+    # Execution Profile
+    # ------------------------
+    parser.add_argument(
+        "--profile",
+        type=str,
+        choices=["ci", "testing", "rpa"],
+        help="Execution profile to adjust wait behavior"
     )
 
     args = parser.parse_args()
@@ -63,7 +71,6 @@ def main():
     # ------------------------
     # Execute NanoWait
     # ------------------------
-
     result = wait(
         t=args.time,
         wifi=args.wifi,
@@ -71,17 +78,16 @@ def main():
         smart=args.smart,
         verbose=args.verbose,
         log=args.log,
-        explain=args.explain
+        explain=args.explain,
+        profile=args.profile
     )
 
     # ------------------------
     # Output explain report
     # ------------------------
-
     if args.explain and result is not None:
         print("\n--- NanoWait Explain Report ---")
         print(result.explain())
-
 
 if __name__ == "__main__":
     main()
