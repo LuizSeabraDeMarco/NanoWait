@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: nano_wait
-Version: 4.0.2
+Version: 4.0.3
 Summary: Adaptive waiting and execution engine — replaces time.sleep() with system-aware, deterministic waiting.
 Author: Luiz Filipe Seabra de Marco
 Author-email: luizfilipeseabra@icloud.com

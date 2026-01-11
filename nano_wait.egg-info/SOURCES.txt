@@ -8,6 +8,7 @@ nano_wait/core.py
 nano_wait/exceptions.py
 nano_wait/explain.py
 nano_wait/nano_wait.py
+nano_wait/telemetry.py
 nano_wait/utils.py
 nano_wait/vision.py
 nano_wait.egg-info/PKG-INFO

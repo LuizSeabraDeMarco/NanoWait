@@ -2,6 +2,7 @@
 import argparse
 from .nano_wait import wait
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Nano-Wait — Adaptive smart wait for Python."
@@ -57,6 +58,15 @@ def main():
     )
 
     # ------------------------
+    # Local Telemetry (opt-in)
+    # ------------------------
+    parser.add_argument(
+        "--telemetry",
+        action="store_true",
+        help="Enable local experimental telemetry (no remote collection)"
+    )
+
+    # ------------------------
     # Execution Profile
     # ------------------------
     parser.add_argument(
@@ -79,15 +89,26 @@ def main():
         verbose=args.verbose,
         log=args.log,
         explain=args.explain,
+        telemetry=args.telemetry,
         profile=args.profile
     )
 
     # ------------------------
-    # Output explain report
+    # Output explain / telemetry
     # ------------------------
-    if args.explain and result is not None:
+    if args.explain:
         print("\n--- NanoWait Explain Report ---")
-        print(result.explain())
+
+        if isinstance(result, tuple):
+            report, telemetry = result
+            print(report.explain())
+
+            if args.telemetry:
+                print("\n--- Telemetry Summary ---")
+                print(telemetry)
+        else:
+            print(result.explain())
+
 
 if __name__ == "__main__":
     main()
