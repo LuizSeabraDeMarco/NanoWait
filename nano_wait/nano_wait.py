@@ -1,5 +1,6 @@
 # nano_wait.py
 import time
+import queue
 from typing import overload
 from datetime import datetime
 
@@ -8,6 +9,7 @@ from .utils import log_message, get_speed_value
 from .exceptions import VisionTimeout
 from .explain import ExplainReport
 from .telemetry import TelemetrySession
+from .dashboard import TelemetryDashboard
 
 _ENGINE = None
 
@@ -48,12 +50,12 @@ def wait(
     verbose: bool = False,
     log: bool = False,
     explain: bool = False,
-    telemetry: bool = False,     # <-- NOVO
+    telemetry: bool = False,
     profile: str | None = None
 ):
     """
     Adaptive deterministic wait with optional explainable execution,
-    execution profiles and local experimental telemetry.
+    execution profiles and local experimental telemetry with live dashboard.
     """
 
     nw = _engine()
@@ -74,14 +76,21 @@ def wait(
     wifi_score = context["wifi_score"]
 
     # ------------------------
-    # Telemetry session (local / opt-in)
+    # Telemetry queue + dashboard
     # ------------------------
+    telemetry_queue = queue.Queue() if telemetry else None
+
+    if telemetry:
+        TelemetryDashboard(telemetry_queue).start()
+
     telemetry_session = TelemetrySession(
         enabled=telemetry,
         cpu_score=cpu_score,
         wifi_score=wifi_score,
         profile=nw.profile.name,
+        queue=telemetry_queue
     )
+
     telemetry_session.start()
 
     # ------------------------
@@ -114,8 +123,8 @@ def wait(
 
             factor = (
                 nw.compute_wait_wifi(speed_value, wifi, context=context)
-                if wifi else
-                nw.compute_wait_no_wifi(speed_value, context=context)
+                if wifi
+                else nw.compute_wait_no_wifi(speed_value, context=context)
             )
 
             interval = max(0.05, min(0.5, 1 / factor))
@@ -136,13 +145,12 @@ def wait(
     # --------------------------------------
     factor = (
         nw.compute_wait_wifi(speed_value, wifi, context=context)
-        if wifi else
-        nw.compute_wait_no_wifi(speed_value, context=context)
+        if wifi
+        else nw.compute_wait_no_wifi(speed_value, context=context)
     )
 
     raw_wait = t / factor if t else factor
     wait_time = round(max(0.05, min(raw_wait, t or raw_wait)), 3)
-
     wait_time = nw.apply_profile(wait_time)
 
     min_floor_applied = raw_wait < 0.05

@@ -12,6 +12,10 @@ With the introduction of **Execution Profiles**, NanoWait now offers a semantic 
 
 > **In summary:** you request a base time (e.g., `wait(5)`), and NanoWait ensures a *safe and context-aware wait* that never exceeds the requested time and never falls below a minimum execution floor.
 
+### Cross-Platform Stability & Headless Environments
+
+NanoWait has undergone significant structural modifications focused on **cross-platform stability**, especially for macOS, and **safe usage in headless environments** (CI, RPA, servers). It explicitly differentiates between graphical and headless modes. In headless environments, no graphical UI is instantiated, preventing crashes like `NSWindow should only be instantiated on the main thread` on macOS with Tkinter issues. This ensures total stability in macOS, CI/CD pipelines, and remote execution.
+
 ---
 
 ## 🛠️ Installation
@@ -65,7 +69,8 @@ wait(
     explain: bool = False,
     verbose: bool = False,
     log: bool = False,
-    profile: str | None = None
+    profile: str | None = None,
+    headless: bool = False # New parameter for explicit headless mode
 ) -> float | ExplainReport
 ```
 
@@ -81,10 +86,11 @@ wait(
 | `verbose` | Prints debug information to `stdout`.                                     |
 | `log`     | Writes execution data to `nano_wait.log`.                                 |
 | `profile` | Selects a predefined execution profile (e.g., "ci", "rpa").             |
+| `headless`| Explicitly forces headless mode, disabling graphical UI elements.           |
 
 ---
 
-## 🧩 Execution Profiles (New Feature)
+## 🧩 Execution Profiles
 
 Execution Profiles introduce a semantic layer over NanoWait's adaptive wait engine. Instead of manually adjusting isolated parameters (speed, aggressiveness, verbosity), you can select an execution profile that represents the operational context in which your code is running — such as continuous integration (CI), automated tests, or robotic process automation (RPA).
 
@@ -178,61 +184,25 @@ wait(
 
 The second example is more readable, more consistent, and less fragile to future changes.
 
-### 🖥️ Command Line Interface (CLI)
-
-Execution Profiles are also available in the CLI:
-
-```bash
-nano-wait 2 --profile ci
-```
-
-With Explain Mode:
-
-```bash
-nano-wait 2 --profile testing --explain
-```
-
-### 🔍 Execution Profiles in Explain Mode
-
-When Explain Mode is active, the applied profile implicitly appears in the final wait behavior:
-
-```python
-report = wait(
-    t=1.5,
-    profile="rpa",
-    explain=True
-)
-
-print(report.explain())
-```
-
-Example output:
-
-```
-Requested time: 1.5s
-Final wait time: 1.32s
-Speed input: normal → 1.5
-Smart mode: False
-CPU score: 6.1
-Adaptive factor: 1.08
-Execution profile: rpa
-```
-
-### 🧠 Design Philosophy
-
-Execution Profiles reflect a core principle of NanoWait:
-
-> Code should express intent, not mechanical adjustments.
-
-By moving time and tolerance decisions to semantic profiles, NanoWait promotes more robust, predictable, and maintainable APIs — especially in complex automated systems.
-
 ---
 
 ## 🔬 Explain Mode (`explain=True`)
 
 Explain Mode makes NanoWait's waiting mechanism deterministic, auditable, and explainable. It does not alter the wait behavior but **reveals how the decision was made**.
 
-When activated, `wait()` returns a dictionary (`Explain Report`) with all factors used in the calculation, ideal for debugging, auditing, and benchmarking.
+When activated, `wait()` returns an `ExplainReport` object (instead of a dictionary as previously). This report contains all factors used in the calculation, ideal for debugging, auditing, and benchmarking. The `ExplainReport` includes:
+
+*   Requested time
+*   Final applied time
+*   Configured and resolved speed
+*   Smart Mode usage
+*   CPU score
+*   Wi-Fi score
+*   Adaptive factor
+*   Application of minimum floor or maximum cap
+*   Execution timestamp
+
+This makes the wait behavior fully auditable and reproducible, providing total transparency for critical environments.
 
 ### Code Example
 
@@ -246,24 +216,19 @@ report = wait(
     explain=True
 )
 
-print(report)
+print(report.explain()) # Use .explain() method for a formatted string output
 ```
 
-**Report Structure:**
+**Example `ExplainReport` output (simplified):**
 
-```json
-{
-  "requested_speed": "fast",
-  "speed_value": 0.5,
-  "adaptive_factor": 1.39,
-  "base_seconds": 0.5,
-  "adjusted_seconds": 0.695,
-  "floor_applied": true,
-  "final_seconds": 0.7,
-  "profile": "fast",
-  "system_load": 0.62
-}
-
+```
+Requested time: 1.5s
+Final wait time: 0.7s
+Speed input: fast -> 0.5
+Smart mode: True
+CPU score: 0.62
+Adaptive factor: 1.39
+Execution profile: default
 ```
 
 ---
@@ -311,110 +276,63 @@ Supported platforms:
 *   macOS (`airport`)
 *   Linux (`nmcli`)
 
-If Wi-Fi data cannot be read, NanoWait safely defaults to neutral values.
-
----
-
-## ⚡ Execution Speed Presets
-
-NanoWait supports symbolic speed presets, as well as numeric values.
-
-| Preset       | Internal Value |
-|--------------|----------------|
-| `slow`       | 0.8            |
-| `normal`     | 1.5            |
-| `fast`       | 3.0            |
-| `ultra`      | 6.0            |
-
-```python
-wait(2, speed="fast")
-wait(2, speed=2.2)
-```
-
-Higher speeds reduce the nominal wait time more aggressively.
-
 ---
 
 ## 🖥️ Command Line Interface (CLI)
 
-NanoWait can be executed directly from the terminal:
+The CLI has been updated to reflect 100% of the API's capabilities, making the tool easy to test, debug, and use in real scripts.
+
+**CLI can be executed locally via:**
 
 ```bash
-nano-wait <time> [options]
+python -m nano_wait.cli 3
 ```
 
-**Example:**
+**Or as an installed command:**
 
 ```bash
-nano-wait 5 --smart --verbose
+nano-wait 3 --smart --explain
 ```
 
-**New in CLI: `--explain` and `--profile`**
+**Supported flags:**
 
-Use the `--explain` and `--profile` flags to get the explanation report and apply profiles directly in the terminal.
-
-```bash
-python -m nano_wait.cli 1.5 --speed fast --explain --profile ci
-```
-
-**Expected Output:**
-
-```
---- NanoWait Explain Report ---
-Requested time: 1.5s
-Final wait time: 1.079s
-Speed input: fast → 3.0
-Smart mode: False
-CPU score: 5.83
-Adaptive factor: 1.39
-Minimum floor applied: False
-Maximum cap applied: False
-Timestamp: 2026-01-06T23:59:25
-Execution profile: ci
-```
-
-**Available Flags:**
-
-*   `--wifi SSID`
-*   `--speed slow|normal|fast|ultra`
 *   `--smart`
-*   `--explain`
+*   `--speed`
+*   `--wifi`
 *   `--verbose`
 *   `--log`
-*   `--profile ci|testing|rpa|default`
+*   `--explain`
+*   `--telemetry` (for local telemetry activation)
+*   `--profile`
+*   `--headless`
 
 ---
 
-## 👁️ Visual Waiting (Optional)
+## 📊 Local Telemetry (Opt-in, No Remote Collection)
 
-Visual waiting functionalities (icons, UI states) are loaded on demand and require:
+NanoWait now includes an experimental, **fully opt-in local telemetry system**. There is **no remote data collection or transmission**.
 
-```bash
-pip install nano-wait-vision
-```
+Telemetry records:
 
-If not installed, NanoWait raises a clear `ImportError` explaining how to enable the functionality.
+*   `cpu_score`
+*   `wifi_score`
+*   `adaptive factor`
+*   `intervals`
+*   Active `profile`
 
----
-
-## 🧪 Design Guarantees
-
-*   Deterministic behavior
-*   No busy-waiting
-*   Safe fallback paths
-*   Cross-platform support
-*   Production-ready API
+In graphical mode (when applicable), a local dashboard might be available. In headless mode, the UI is automatically deactivated. The objective is to allow analysis of wait behavior without compromising security or portability.
 
 ---
 
-## 🤝 Contribution and License
+## 🛡️ Best Practices & Recommendations
 
-NanoWait is open-source and licensed under the MIT License. Your contribution is highly welcome!
+1.  **Use Profiles:** Prefer `wait(2, profile="testing")` over `wait(2, speed="fast")` for semantic clarity and robustness.
+2.  **Smart Mode in Production:** Activate `smart=True` in environments where CPU load is unpredictable to ensure adaptive waiting.
+3.  **Audit with Explain:** Use `explain=True` during debugging or intermittent test failures to understand how environmental factors influenced the wait duration.
+4.  **Explicit Headless:** When running in Docker, CI, or on servers without a display, explicitly use the `--headless` flag in the CLI or the `headless=True` parameter in the API to prevent unexpected UI attempts.
 
-We encourage the community to interact and collaborate. If you find a bug, have a suggestion for improvement, or want to discuss new features, please use GitHub:
+---
 
-*   **Report an issue (Issues):** [https://github.com/luizfilipe/NanoWait/issues](https://github.com/LuizSeabraDeMarco/NanoWait/issues)
-*   **Discussions:** [https://github.com/luizfilipe/NanoWait/discussions](https://github.com/LuizSeabraDeMarco/NanoWait/discussions)
+## 📄 License
 
-**Author:** Luiz Filipe Seabra de Marco
-**License:** MIT
+Distributed under the MIT License. See `LICENSE` for more information.

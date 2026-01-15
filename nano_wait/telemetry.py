@@ -2,6 +2,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional
 from datetime import datetime
+import queue
 
 
 @dataclass(frozen=True)
@@ -13,11 +14,6 @@ class TelemetryEvent:
 
 @dataclass
 class TelemetrySession:
-    """
-    Local, optional and ephemeral telemetry session.
-    No remote collection. No persistence by default.
-    """
-
     enabled: bool = False
     start_time: Optional[float] = None
     end_time: Optional[float] = None
@@ -28,6 +24,9 @@ class TelemetrySession:
 
     events: List[TelemetryEvent] = field(default_factory=list)
 
+    # 👇 NOVO
+    queue: Optional[queue.Queue] = None
+
     def start(self):
         if self.enabled:
             from time import time
@@ -37,18 +36,27 @@ class TelemetrySession:
         if self.enabled:
             from time import time
             self.end_time = time()
+            if self.queue:
+                self.queue.put("__STOP__")
 
     def record(self, *, factor: float, interval: float):
         if not self.enabled:
             return
 
-        self.events.append(
-            TelemetryEvent(
-                timestamp=datetime.utcnow().isoformat(),
-                factor=round(factor, 4),
-                interval=round(interval, 4),
-            )
+        event = TelemetryEvent(
+            timestamp=datetime.utcnow().isoformat(),
+            factor=round(factor, 4),
+            interval=round(interval, 4),
         )
+
+        self.events.append(event)
+
+        if self.queue:
+            self.queue.put({
+                "factor": event.factor,
+                "interval": event.interval,
+                "count": len(self.events)
+            })
 
     def summary(self) -> dict:
         if not self.enabled:
