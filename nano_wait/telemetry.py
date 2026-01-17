@@ -2,7 +2,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional
 from datetime import datetime
-import queue
+import queue as std_queue  # renomeado para evitar conflitos
 
 
 @dataclass(frozen=True)
@@ -25,7 +25,7 @@ class TelemetrySession:
     events: List[TelemetryEvent] = field(default_factory=list)
 
     # 👇 NOVO
-    queue: Optional[queue.Queue] = None
+    queue: Optional[std_queue.Queue] = None
 
     def start(self):
         if self.enabled:

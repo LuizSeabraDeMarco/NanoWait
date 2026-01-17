@@ -24,6 +24,14 @@ NanoWait has undergone significant structural modifications focused on **cross-p
 pip install nano_wait
 ```
 
+### Required Dependencies
+
+For the adaptive features (CPU/RAM/Wi-Fi awareness) to function, the following dependencies are necessary:
+
+```bash
+pip install psutil pywifi
+```
+
 ### Optional Module — Vision Mode
 
 Visual waiting (icon/state detection) has been intentionally moved to a dedicated package to keep NanoWait lightweight and deterministic.
@@ -57,7 +65,39 @@ NanoWait **never waits longer than the requested base time** and applies a minim
 
 ---
 
+## ⚡️ Asynchronous Support (`wait_async`)
+
+NanoWait now offers full compatibility with asynchronous environments like **FastAPI**, **asyncio-based bots**, and **async scraping** tools. The new function, `wait_async`, is a non-blocking version of `wait()`, ensuring that the main thread or event loop remains free to process other tasks while the adaptive wait is executed.
+
+This change is crucial for high-performance applications where blocking the event loop is unacceptable.
+
+### Usage in Async Code
+
+Simply use `await` with `wait_async` inside an `async` function:
+
+```python
+import asyncio
+from nano_wait import wait_async
+
+async def main():
+    print("Starting non-blocking wait...")
+    # The event loop is not blocked during this wait
+    result = await wait_async(2, verbose=True)
+    print(f"Wait finished. Result: {result:.3f}s")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+> **Note:** `wait_async` internally uses `asyncio.to_thread` (or `loop.run_in_executor` in older Python versions) to run the synchronous adaptive logic in a separate thread, ensuring true non-blocking behavior for the event loop.
+
+---
+
 ## ⚙️ Core API
+
+NanoWait now exposes two primary functions: `wait` (synchronous) and `wait_async` (asynchronous). Both share the same signature and adaptive logic.
+
+### `wait` (Synchronous)
 
 ```python
 wait(
@@ -70,23 +110,40 @@ wait(
     verbose: bool = False,
     log: bool = False,
     profile: str | None = None,
-    headless: bool = False # New parameter for explicit headless mode
+    headless: bool = False
+) -> float | ExplainReport
+```
+
+### `wait_async` (Asynchronous)
+
+```python
+async def wait_async(
+    t: float | None = None,
+    *,
+    wifi: str | None = None,
+    speed: str | float = "normal",
+    smart: bool = False,
+    explain: bool = False,
+    verbose: bool = False,
+    log: bool = False,
+    profile: str | None = None,
+    headless: bool = False
 ) -> float | ExplainReport
 ```
 
 ### Parameters
 
-| Parameter | Description                                                                 |
-|-----------|---------------------------------------------------------------------------|
-| `t`       | Base time in seconds (required for time-based waiting).                   |
-| `wifi`    | Wi-Fi network SSID to assess signal quality (optional).                   |
-| `speed`   | Execution speed preset or numeric value.                                  |
-| `smart`   | Activates Smart Context Mode (dynamic speed calculation).                 |
-| `explain` | Activates Explain Mode, which returns a detailed decision report.         |
-| `verbose` | Prints debug information to `stdout`.                                     |
-| `log`     | Writes execution data to `nano_wait.log`.                                 |
-| `profile` | Selects a predefined execution profile (e.g., "ci", "rpa").             |
-| `headless`| Explicitly forces headless mode, disabling graphical UI elements.           |
+| Parameter | Description |
+|---|---|
+| `t` | Base time in seconds (required for time-based waiting). |
+| `wifi` | Wi-Fi network SSID to assess signal quality (optional). |
+| `speed` | Execution speed preset or numeric value. |
+| `smart` | Activates Smart Context Mode (dynamic speed calculation). |
+| `explain` | Activates Explain Mode, which returns a detailed decision report. |
+| `verbose` | Prints debug information to `stdout`. |
+| `log` | Writes execution data to `nano_wait.log`. |
+| `profile` | Selects a predefined execution profile (e.g., "ci", "rpa"). |
+| `headless`| Explicitly forces headless mode, disabling graphical UI elements. |
 
 ---
 
@@ -125,12 +182,12 @@ If no profile is specified, NanoWait uses the default profile.
 
 ### 🧪 Available Profiles
 
-| Profile   | Recommended Use                      | General Behavior                        |
-|-----------|--------------------------------------|-----------------------------------------|
-| `ci`      | CI/CD Pipelines                      | Aggressive waits, verbose enabled       |
-| `testing` | Local Automated Tests                | Balance between speed and stability     |
-| `rpa`     | Interface and Human Workflow Automation | More conservative waits                 |
-| `default` | Generic Execution                    | Balanced behavior                       |
+| Profile | Recommended Use | General Behavior |
+|---|---|---|
+| `ci` | CI/CD Pipelines | Aggressive waits, verbose enabled |
+| `testing` | Local Automated Tests | Balance between speed and stability |
+| `rpa` | Interface and Human Workflow Automation | More conservative waits |
+| `default` | Generic Execution | Balanced behavior |
 
 ### 🧠 What does an Execution Profile control?
 
@@ -190,7 +247,7 @@ The second example is more readable, more consistent, and less fragile to future
 
 Explain Mode makes NanoWait's waiting mechanism deterministic, auditable, and explainable. It does not alter the wait behavior but **reveals how the decision was made**.
 
-When activated, `wait()` returns an `ExplainReport` object (instead of a dictionary as previously). This report contains all factors used in the calculation, ideal for debugging, auditing, and benchmarking. The `ExplainReport` includes:
+When activated, `wait()` (or `wait_async`) returns an `ExplainReport` object. This report contains all factors used in the calculation, ideal for debugging, auditing, and benchmarking. The `ExplainReport` includes:
 
 *   Requested time
 *   Final applied time
@@ -282,6 +339,15 @@ Supported platforms:
 
 The CLI has been updated to reflect 100% of the API's capabilities, making the tool easy to test, debug, and use in real scripts.
 
+**New Feature: Asynchronous Execution**
+
+The CLI now supports a non-blocking execution mode using the new `--async` flag:
+
+```bash
+# Wait assíncrono com verbose
+python3 -m nano_wait.cli 2 --async --verbose
+```
+
 **CLI can be executed locally via:**
 
 ```bash
@@ -305,12 +371,15 @@ nano-wait 3 --smart --explain
 *   `--telemetry` (for local telemetry activation)
 *   `--profile`
 *   `--headless`
+*   **`--async`** (New)
 
 ---
 
 ## 📊 Local Telemetry (Opt-in, No Remote Collection)
 
 NanoWait now includes an experimental, **fully opt-in local telemetry system**. There is **no remote data collection or transmission**.
+
+**Stability Improvement:** The internal import for the telemetry queue has been renamed (`import queue as std_queue`) to prevent potential conflicts and `AttributeError` issues, particularly on macOS.
 
 Telemetry records:
 
@@ -330,6 +399,7 @@ In graphical mode (when applicable), a local dashboard might be available. In he
 2.  **Smart Mode in Production:** Activate `smart=True` in environments where CPU load is unpredictable to ensure adaptive waiting.
 3.  **Audit with Explain:** Use `explain=True` during debugging or intermittent test failures to understand how environmental factors influenced the wait duration.
 4.  **Explicit Headless:** When running in Docker, CI, or on servers without a display, explicitly use the `--headless` flag in the CLI or the `headless=True` parameter in the API to prevent unexpected UI attempts.
+5.  **Async for Web/Bots:** Use `await wait_async(...)` in any application that relies on an `asyncio` event loop (FastAPI, aiohttp, etc.) to maintain non-blocking performance.
 
 ---
 
