@@ -1,9 +1,9 @@
-import subprocess
+import asyncio
+from nano_wait import wait_async
 
-result = subprocess.run(
-    ["pypistats", "recent", "nano-wait", "--format", "json"],
-    capture_output=True,
-    text=True
-)
+async def main():
+    print("Início do wait_async")
+    result = await wait_async(2, smart=False, speed="slow")
+    print(f"Esperou: {result} segundos")
 
-print(result.stdout)
+asyncio.run(main())

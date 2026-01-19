@@ -71,18 +71,29 @@ NanoWait now offers full compatibility with asynchronous environments like **Fas
 
 This change is crucial for high-performance applications where blocking the event loop is unacceptable.
 
-### Usage in Async Code
+### Usage in Async Code with Callbacks
 
-Simply use `await` with `wait_async` inside an `async` function:
+The `wait_async` function allows you to pass an optional `callback`, either synchronous or asynchronous, to be executed after the wait completes or after a visual condition is detected.
 
 ```python
 import asyncio
 from nano_wait import wait_async
 
+# Async callback example
+async def async_callback():
+    print("Async callback executed!")
+
+# Normal (sync) callback example
+def normal_callback():
+    print("Normal callback executed!")
+
 async def main():
-    print("Starting non-blocking wait...")
-    # The event loop is not blocked during this wait
-    result = await wait_async(2, verbose=True)
+    print("Starting non-blocking wait with callback...")
+    result = await wait_async(
+        2,                          # base wait time
+        verbose=True,
+        callback=async_callback     # can be async or normal function
+    )
     print(f"Wait finished. Result: {result:.3f}s")
 
 if __name__ == "__main__":
@@ -127,7 +138,8 @@ async def wait_async(
     verbose: bool = False,
     log: bool = False,
     profile: str | None = None,
-    headless: bool = False
+    headless: bool = False,
+    callback: None | callable = None # <-- Added callback parameter
 ) -> float | ExplainReport
 ```
 
@@ -144,6 +156,7 @@ async def wait_async(
 | `log` | Writes execution data to `nano_wait.log`. |
 | `profile` | Selects a predefined execution profile (e.g., "ci", "rpa"). |
 | `headless`| Explicitly forces headless mode, disabling graphical UI elements. |
+| `callback`| Optional function to be executed after the wait completes; can be sync or async. |
 
 ---
 
@@ -344,7 +357,7 @@ The CLI has been updated to reflect 100% of the API's capabilities, making the t
 The CLI now supports a non-blocking execution mode using the new `--async` flag:
 
 ```bash
-# Wait assíncrono com verbose
+# Asynchronous wait with verbose output
 python3 -m nano_wait.cli 2 --async --verbose
 ```
 

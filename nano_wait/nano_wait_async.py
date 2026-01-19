@@ -29,10 +29,11 @@ async def wait_async(
     log: bool = False,
     explain: bool = False,
     telemetry: bool = False,
-    profile: str | None = None
+    profile: str | None = None,
+    callback: None | callable = None   # <-- novo
 ):
     """
-    Async adaptive wait with optional explainable execution.
+    Async adaptive wait with optional explainable execution and callbacks.
     Compatible with FastAPI, bots, scraping async tasks.
     """
 
@@ -74,12 +75,25 @@ async def wait_async(
                 state = await asyncio.to_thread(vision.observe, [region] if region else None)
                 if state == until:
                     telemetry_session.stop()
-                    return await asyncio.to_thread(vision.detect_icon, "", region)
+                    result = await asyncio.to_thread(vision.detect_icon, "", region)
+                    # Callback após detecção
+                    if callback:
+                        if asyncio.iscoroutinefunction(callback):
+                            await callback()
+                        else:
+                            await asyncio.to_thread(callback)
+                    return result
 
             if icon:
                 result = await asyncio.to_thread(vision.detect_icon, icon, region)
                 if result.detected:
                     telemetry_session.stop()
+                    # Callback após detecção
+                    if callback:
+                        if asyncio.iscoroutinefunction(callback):
+                            await callback()
+                        else:
+                            await asyncio.to_thread(callback)
                     return result
 
             factor = (
@@ -119,10 +133,23 @@ async def wait_async(
     if log:
         log_message(f"[NanoWait | {nw.profile.name}] async wait={wait_time:.3f}s factor={factor:.2f}")
 
+    # ------------------------
+    # Execute wait
+    # ------------------------
     await asyncio.sleep(wait_time)
+
+    # Executa callback após tempo
+    if callback:
+        if asyncio.iscoroutinefunction(callback):
+            await callback()
+        else:
+            await asyncio.to_thread(callback)
 
     telemetry_session.stop()
 
+    # ------------------------
+    # Explain report
+    # ------------------------
     if explain:
         report = ExplainReport(
             requested_time=t,
