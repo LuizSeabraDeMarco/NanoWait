@@ -4,16 +4,23 @@ import os
 import asyncio
 from .nano_wait import wait
 from .nano_wait_async import wait_async
+from .nano_wait_pool import wait_pool, wait_pool_async
 
 def main():
     parser = argparse.ArgumentParser(description="Nano-Wait — Adaptive smart wait for Python.")
 
-    parser.add_argument("time", type=float, help="Base time in seconds")
+    parser.add_argument("time", type=float, nargs='?', help="Base time in seconds")
     parser.add_argument(
         "--async",
         dest="use_async",
         action="store_true",
         help="Run wait asynchronously"
+    )
+    parser.add_argument(
+        "--pool",
+        type=float,
+        nargs='+',
+        help="Run multiple waits in parallel (ex: --pool 2 5 1.5)"
     )
     parser.add_argument("--wifi", type=str, help="Wi-Fi SSID (optional)")
     parser.add_argument("--speed", type=str, default="normal", help="slow | normal | fast | ultra | numeric value")
@@ -25,7 +32,19 @@ def main():
 
     args = parser.parse_args()
 
-    if args.use_async:
+    if args.pool:
+        results = wait_pool(
+            args.pool,
+            profile=args.profile,
+            wifi=args.wifi,
+            speed=args.speed,
+            smart=args.smart,
+            verbose=args.verbose,
+            log=args.log,
+            explain=args.explain
+        )
+        print(results)
+    elif args.use_async:
         asyncio.run(wait_async(
             t=args.time,
             wifi=args.wifi,
