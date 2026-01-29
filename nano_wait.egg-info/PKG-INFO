@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: nano_wait
-Version: 4.0.8
+Version: 5.0.0
 Summary: Adaptive waiting and execution engine — replaces time.sleep() with system-aware, deterministic waiting.
 Author: Luiz Filipe Seabra de Marco
 Author-email: luizfilipeseabra@icloud.com
@@ -68,6 +68,7 @@ NanoWait has undergone significant structural modifications focused on **cross-p
 - **Explain Mode:** Auditable decision reports for full transparency.
 - **CLI Support:** Powerful command-line interface for quick tasks.
 - **Local Telemetry:** Opt-in system for analyzing wait behavior without remote data collection.
+- **Ultra-Adaptive Auto Wait (`wait_auto`)**: Automatically computes the safest and fastest interval for any action without manual configuration.
 
 ---
 
@@ -77,9 +78,10 @@ Install the core package via pip:
 
 ```bash
 pip install nano_wait
-```
+````
 
 ### Required Dependencies
+
 For adaptive features (CPU/RAM/Wi-Fi awareness) to function, install the following:
 
 ```bash
@@ -87,11 +89,13 @@ pip install psutil pywifi
 ```
 
 ### Optional Module — Vision Mode
+
 Visual waiting (icon/state detection) is available in a dedicated package to keep the core engine lightweight:
 
 ```bash
 pip install nano-wait-vision
 ```
+
 *Note: If Vision Mode is not installed, NanoWait will raise a clear runtime error when visual functionalities are requested.*
 
 ---
@@ -99,6 +103,7 @@ pip install nano-wait-vision
 ## 💡 Quick Start
 
 ### Standard vs. Adaptive Wait
+
 ```python
 from nano_wait import wait
 import time
@@ -108,7 +113,64 @@ start = time.time()
 wait(5)
 print(f"nano_wait.wait(): {time.time() - start:.2f}s")
 ```
+
 *NanoWait **never waits longer than the requested base time** and applies a minimum internal delay of **50 ms** to prevent excessive CPU usage.*
+
+---
+
+## 🆕 Ultra-Adaptive Auto Wait (`wait_auto`)
+
+The new `wait_auto` function is a **zero-configuration adaptive wait** designed for **PyAutoGUI or any automation workflow**.
+
+It automatically:
+
+* Estimates the optimal wait time for the system and network.
+* Considers CPU, RAM, and Wi-Fi signal strength.
+* Chooses the minimal safe interval between actions.
+* Applies the selected Execution Profile automatically.
+* Logs and prints the wait decision (optional).
+* Works out-of-the-box with loops and sequences in automation scripts.
+
+### Basic Usage
+
+```python
+from nano_wait.nano_wait_auto import wait_auto
+
+# Simple auto wait (calculates safe interval)
+interval = wait_auto(verbose=True)
+print(f"Interval calculated: {interval:.3f}s")
+```
+
+### Advanced Usage with Smart Options
+
+```python
+from nano_wait.nano_wait_auto import wait_auto
+
+# Auto wait with Execution Profile, optional Wi-Fi awareness, and logging
+interval = wait_auto(
+    wifi="MyNetwork_5G",
+    profile="ci",
+    verbose=True,
+    log=True,
+    telemetry=True
+)
+print(f"Interval applied: {interval:.3f}s")
+```
+
+### Integration with PyAutoGUI Example
+
+```python
+import pyautogui
+from nano_wait.nano_wait_auto import wait_auto
+
+# Example automation sequence
+pyautogui.click(100, 200)
+wait_auto()  # Automatically computes next safe interval
+pyautogui.write("Hello, world!")
+wait_auto(verbose=True)  # Logs decision
+```
+
+**Key benefit:** You don’t need to manually set times, speeds, or factors—`wait_auto` intelligently adapts to the system and environment.
 
 ---
 
@@ -117,6 +179,7 @@ print(f"nano_wait.wait(): {time.time() - start:.2f}s")
 NanoWait is fully compatible with asynchronous environments like **FastAPI**, **asyncio-based bots**, and **web scrapers**. The `wait_async` function is non-blocking, ensuring the event loop remains free.
 
 ### Usage in Async Code (Concise Example)
+
 ```python
 import asyncio
 from nano_wait import wait_async
@@ -129,7 +192,6 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 ```
-> **Note:** `wait_async` internally uses `asyncio.to_thread` to run the synchronous adaptive logic in a separate thread, ensuring true non-blocking behavior for the event loop.
 
 ---
 
@@ -137,222 +199,29 @@ if __name__ == "__main__":
 
 Run multiple adaptive waits in parallel—ideal for batch automation or concurrent UI interactions.
 
-### Execution Comparison (Simulated Times)
-
-| Function | Execution Type | Parallel? | Total Time (Simulated) | Use Case |
-| :--- | :--- | :---: | :--- | :--- |
-| `wait(1) + wait(2)` | Synchronous | ❌ | ~3.0s | Simple, sequential tasks |
-| `wait_async(1) + wait_async(2)` | Asynchronous | ❌ | ~3.0s | Sequential, non-blocking tasks |
-| `wait_pool([1, 2])` | Synchronous Pool | ✅ | ~2.0s | Batch automation, concurrent tests |
-| `wait_pool_async([1, 2])` | Asynchronous Pool | ✅ | ~2.0s | High-performance async scraping/bots |
-
 ### Conditional Cancellation (`cancel_if`)
-You can skip waits based on custom conditions (e.g., high system load). If the callable passed to `cancel_if` returns `True`, the wait is skipped. This is available for both `wait_pool` and `wait_pool_async`.
-
-| Condition | Function | Behavior | Result for Skipped Task |
-| :--- | :--- | :--- | :--- |
-| `cancel_if=callable` | `wait_pool` | Synchronous skip | `None` |
-| `cancel_if=callable` | `wait_pool_async` | Asynchronous skip | `None` |
 
 ```python
 import psutil
 from nano_wait import wait_pool
 
-# Function to cancel tasks if CPU load is over 80%
 def heavy_load():
     return psutil.cpu_percent() > 80
 
-# If heavy_load() returns True, the waits are skipped
 results = wait_pool([1, 2, 3], cancel_if=heavy_load)
-# Example output if cancelled: [None, None, None]
 ```
 
 ---
 
 ## ⚙️ Core API Reference
 
-| Function | Sync | Async | Parallel | Cancelable |
-| :--- | :---: | :---: | :---: | :---: |
-| `wait` | ✅ | ❌ | ❌ | ❌ |
-| `wait_async` | ❌ | ✅ | ❌ | ❌ |
-| `wait_pool` | ✅ | ❌ | ✅ | ✅ |
-| `wait_pool_async` | ❌ | ✅ | ✅ | ✅ |
-
-### Parameters
-
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
-| `t` / `times` | `float` / `list` | **Required.** Base time(s) in seconds. |
-| `smart` | `bool` | Activates Smart Context Mode (dynamic speed calculation). |
-| `profile` | `str` | Selects a predefined profile (e.g., `"ci"`, `"rpa"`, `"testing"`). |
-| `speed` | `str/int` | Execution speed preset or numeric value. |
-| `wifi` | `str` | Wi-Fi SSID to assess signal quality (optional). |
-| `explain` | `bool` | Returns a detailed `ExplainReport` object. |
-| `verbose` | `bool` | Prints debug information to stdout. |
-| `log` | `bool` | Writes execution data to `nano_wait.log`. |
-| `headless` | `bool` | Forces headless mode, disabling graphical UI elements. |
-| `callback` | `callable`| Function to execute after wait (sync or async). |
-| `cancel_if` | `callable`| Condition to cancel wait (pool only). |
-
----
-
-## 🧩 Execution Profiles
-
-Execution Profiles introduce a semantic layer over NanoWait's adaptive wait engine. Instead of manually adjusting isolated parameters (speed, aggressiveness, verbosity), you can select an execution profile that represents the operational context.
-
-### 🎯 Why use Execution Profiles?
-Without profiles, scripts tend to accumulate fragile adjustments:
-```python
-wait(2, speed="fast", smart=True, verbose=True)
-```
-With Execution Profiles, the focus shifts to the environment, not mechanical details:
-```python
-wait(2, profile="ci")
-```
-
-### 🧪 Available Profiles
-
-| Profile | Recommended Use | General Behavior |
-| :--- | :--- | :--- |
-| `ci` | CI/CD Pipelines | Aggressive waits, verbose enabled |
-| `testing` | Local Automated Tests | Balance between speed and stability |
-| `rpa` | UI / Human Workflow | More conservative waits |
-| `default` | Generic Execution | Balanced behavior |
-
-### 🧠 What does an Execution Profile control?
-Internally, each profile defines:
-- Aggressiveness of time adaptation
-- Tolerance to transient instabilities
-- Polling interval
-- Default verbosity (automatic debug)
-
----
-
-## 🔬 Explain Mode (`explain=True`)
-
-Explain Mode makes NanoWait's waiting mechanism deterministic, auditable, and explainable. It does not alter the wait behavior but **reveals how the decision was made**.
-
-When activated, `wait()` returns an `ExplainReport` object containing:
-- Requested vs. Final applied time
-- Configured and resolved speed
-- Smart Mode usage & CPU/Wi-Fi scores
-- Adaptive factor & Execution profile
-
-### Realistic Example Output
-```python
-from nano_wait import wait
-
-# Simulating a wait with Smart Mode, a Profile, and Wi-Fi awareness
-report = wait(
-    t=1.5, 
-    smart=True, 
-    profile="rpa", 
-    wifi="MyNetwork_5G", 
-    explain=True
-)
-print(report.explain())
-```
-
-**Example `ExplainReport` output (simulated):**
-```
---------------------------------------------------
-NanoWait Explain Report
---------------------------------------------------
-Requested Time: 1.5s
-Final Wait Time: 0.98s (Adaptive)
-Execution Profile: rpa
-Smart Mode: True
-Wi-Fi SSID: MyNetwork_5G
---------------------------------------------------
-System Metrics:
-  CPU Score: 0.75 (75% CPU load)
-  Wi-Fi Score: 0.90 (Excellent signal)
-  Adaptive Factor: 1.12
---------------------------------------------------
-Decision: Wait time was reduced due to high CPU load,
-but slightly increased by the conservative 'rpa' profile.
---------------------------------------------------
-```
-
----
-
-## 🧠 Smart Context Mode (`smart=True`)
-
-When activated, NanoWait automatically calculates the execution speed based on the **average system context score**.
-
-```python
-wait(10, smart=True, verbose=True)
-```
-
-### How Smart Speed Works
-- **PC Score:** Derived from CPU and memory usage.
-- **Wi-Fi Score:** Derived from RSSI (if activated).
-
-The final **Smart Speed** is calculated as:
-`speed = clamp( (pc_score + wifi_score) / 2 , 0.5 , 5.0 )`
-
----
-
-## 🌐 Wi-Fi Awareness
-
-If your automation depends on network stability, NanoWait can adapt its waiting behavior based on Wi-Fi signal strength.
-
-```python
-wait(5, wifi="MyNetwork_5G")
-```
-*Supported platforms: Windows (`pywifi`), macOS (`airport`), Linux (`nmcli`).*
-
----
-
-## 🖥️ Command Line Interface (CLI)
-
-The CLI reflects 100% of the API's capabilities.
-
-### CLI ↔ API Mapping
-
-| API Parameter | CLI Flag | Description |
-| :--- | :--- | :--- |
-| `t` / `times` | Positional Args | Base time(s) |
-| `smart=True` | `--smart` | Activates Smart Mode |
-| `profile="ci"` | `--profile ci` | Selects Execution Profile |
-| `explain=True` | `--explain` | Returns Explain Report |
-| `verbose=True` | `--verbose` | Prints debug logs |
-| `wait_async` | `--async` | Enables non-blocking execution |
-| `wait_pool` | `--pool` | Enables parallel execution |
-
-### Advanced CLI Examples
-
-```bash
-# 1. Asynchronous parallel execution (non-blocking pool)
-nano-wait --async --pool 1 2 3 --verbose
-
-# 2. Parallel execution with a cancellation condition (simulated)
-# Note: cancel_if logic must be implemented in a wrapper script for CLI use.
-# This example shows the pool execution with a profile.
-nano-wait --pool 1 2 3 --profile rpa
-
-# 3. Explain Mode with Smart Context and a Profile
-nano-wait 5 --smart --profile ci --explain
-```
-
----
-
-## 📊 Local Telemetry (Opt-in)
-
-NanoWait includes an experimental, **fully opt-in local telemetry system**. 
-- **No remote data collection:** All data stays on your machine.
-- **Records:** CPU score, Wi-Fi score, adaptive factor, and active profile.
-- **Stability:** Internal improvements (renamed telemetry queue) ensure no conflicts on macOS or headless environments.
-
----
-
-## 🛡️ Best Practices
-
-1. **Prefer Profiles:** Use `profile="ci"` or `profile="rpa"` instead of manual speed settings for semantic clarity.
-2. **Go Smart:** Use `smart=True` in unpredictable or shared environments.
-3. **Headless First:** Explicitly use `headless=True` in Docker or CI to prevent unexpected UI instantiation.
-4. **Async for Performance:** Use `wait_async` or `wait_pool_async` in `asyncio` applications to maintain non-blocking performance.
-5. **Audit with Explain:** Use `explain=True` during development to understand how environmental factors influence delays.
+| Function          | Sync | Async | Parallel | Cancelable |
+| :---------------- | :--: | :---: | :------: | :--------- |
+| `wait`            |   ✅  |   ❌   |     ❌    | ❌          |
+| `wait_async`      |   ❌  |   ✅   |     ❌    | ❌          |
+| `wait_pool`       |   ✅  |   ❌   |     ✅    | ✅          |
+| `wait_pool_async` |   ❌  |   ✅   |     ✅    | ✅          |
+| `wait_auto`       |   ✅  |   ❌   |     ❌    | ❌          |
 
 ---
 

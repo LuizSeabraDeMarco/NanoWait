@@ -1,9 +1,9 @@
-# telemetry.py
 from dataclasses import dataclass, field
 from typing import List, Optional
 from datetime import datetime
-import queue as std_queue  # renomeado para evitar conflitos
+import queue as std_queue
 
+from .usage import log_usage_event
 
 @dataclass(frozen=True)
 class TelemetryEvent:
@@ -24,20 +24,27 @@ class TelemetrySession:
 
     events: List[TelemetryEvent] = field(default_factory=list)
 
-    # 👇 NOVO
     queue: Optional[std_queue.Queue] = None
 
     def start(self):
-        if self.enabled:
-            from time import time
-            self.start_time = time()
+        if not self.enabled:
+            return
+
+        from time import time
+        self.start_time = time()
+
+        # 🔹 ONE usage event per execution (MAU signal)
+        log_usage_event("session_start", __version__)
 
     def stop(self):
-        if self.enabled:
-            from time import time
-            self.end_time = time()
-            if self.queue:
-                self.queue.put("__STOP__")
+        if not self.enabled:
+            return
+
+        from time import time
+        self.end_time = time()
+
+        if self.queue:
+            self.queue.put("__STOP__")
 
     def record(self, *, factor: float, interval: float):
         if not self.enabled:
