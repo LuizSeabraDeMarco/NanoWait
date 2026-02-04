@@ -1,5 +1,5 @@
 # nano_wait/__init__.py
-__version__ = "4.0.9"  # ou qualquer versão que você queira testar
+__version__ = "5.0.1"  # ou qualquer versão que você queira testar
 
 from .nano_wait import wait, NanoWait
 from .nano_wait_async import wait_async

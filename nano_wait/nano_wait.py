@@ -3,6 +3,7 @@ import time
 import queue
 from typing import overload
 from datetime import datetime
+import socket
 
 from .core import NanoWait, PROFILES
 from .utils import log_message, get_speed_value
@@ -13,13 +14,23 @@ from .dashboard import TelemetryDashboard
 
 _ENGINE = None
 
-
 def _engine():
     global _ENGINE
     if _ENGINE is None:
         _ENGINE = NanoWait()
     return _ENGINE
 
+# --------------------------
+# Função utilitária internet
+# --------------------------
+def has_internet(host="8.8.8.8", port=53, timeout=1):
+    """Detecta se há internet ativa."""
+    try:
+        socket.setdefaulttimeout(timeout)
+        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
+        return True
+    except Exception:
+        return False
 
 # --------------------------------------
 # Public API
@@ -28,14 +39,11 @@ def _engine():
 @overload
 def wait(t: float, **kwargs) -> float: ...
 
-
 @overload
 def wait(*, until: str, **kwargs): ...
 
-
 @overload
 def wait(*, icon: str, **kwargs): ...
-
 
 def wait(
     t: float | None = None,
@@ -60,9 +68,6 @@ def wait(
 
     nw = _engine()
 
-    # ------------------------
-    # Apply execution profile
-    # ------------------------
     if profile:
         nw.profile = PROFILES.get(profile, PROFILES["default"])
 
@@ -75,11 +80,7 @@ def wait(
     cpu_score = context["pc_score"]
     wifi_score = context["wifi_score"]
 
-    # ------------------------
-    # Telemetry queue + dashboard
-    # ------------------------
     telemetry_queue = queue.Queue() if telemetry else None
-
     if telemetry:
         TelemetryDashboard(telemetry_queue).start()
 
@@ -90,7 +91,6 @@ def wait(
         profile=nw.profile.name,
         queue=telemetry_queue
     )
-
     telemetry_session.start()
 
     # ------------------------
@@ -99,16 +99,14 @@ def wait(
     speed_value = nw.smart_speed(wifi) if smart else get_speed_value(speed)
 
     # --------------------------------------
-    # VISUAL WAIT
+    # Visual wait
     # --------------------------------------
     if until or icon:
         from .vision import VisionMode
-
         vision = VisionMode()
         start = time.time()
 
         while time.time() - start < timeout:
-
             if until:
                 state = vision.observe([region] if region else None)
                 if state == until:
@@ -121,31 +119,28 @@ def wait(
                     telemetry_session.stop()
                     return result
 
+            # Aqui usamos internet detectada automaticamente
             factor = (
                 nw.compute_wait_wifi(speed_value, wifi, context=context)
-                if wifi
+                if wifi or has_internet()
                 else nw.compute_wait_no_wifi(speed_value, context=context)
             )
 
             interval = max(0.05, min(0.5, 1 / factor))
             interval = nw.apply_profile(interval)
 
-            telemetry_session.record(
-                factor=factor,
-                interval=interval
-            )
-
+            telemetry_session.record(factor=factor, interval=interval)
             time.sleep(interval)
 
         telemetry_session.stop()
         raise VisionTimeout("Visual condition not detected")
 
     # --------------------------------------
-    # TIME WAIT
+    # Time wait
     # --------------------------------------
     factor = (
         nw.compute_wait_wifi(speed_value, wifi, context=context)
-        if wifi
+        if wifi or has_internet()
         else nw.compute_wait_no_wifi(speed_value, context=context)
     )
 
@@ -156,14 +151,8 @@ def wait(
     min_floor_applied = raw_wait < 0.05
     max_cap_applied = t is not None and raw_wait > t
 
-    telemetry_session.record(
-        factor=factor,
-        interval=wait_time
-    )
+    telemetry_session.record(factor=factor, interval=wait_time)
 
-    # ------------------------
-    # Verbose / log
-    # ------------------------
     if verbose:
         print(
             f"[NanoWait | {nw.profile.name}] "
@@ -180,9 +169,6 @@ def wait(
             f"wait={wait_time:.3f}s"
         )
 
-    # ------------------------
-    # Explain report
-    # ------------------------
     report = None
     if explain:
         report = ExplainReport(
@@ -200,18 +186,12 @@ def wait(
         )
 
     telemetry_session.stop()
-
-    # ------------------------
-    # Execute wait
-    # ------------------------
     time.sleep(wait_time)
 
     if explain and telemetry:
         return report, telemetry_session.summary()
-
     if explain:
         return report
-
     if telemetry:
         return wait_time, telemetry_session.summary()
 
