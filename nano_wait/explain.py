@@ -20,7 +20,7 @@ class ExplainReport:
     max_cap_applied: bool
 
     timestamp: str
-    nano_wait_version: str = "5.0.1"
+    nano_wait_version: str = "5.0.2"
 
     def to_dict(self):
         return asdict(self)

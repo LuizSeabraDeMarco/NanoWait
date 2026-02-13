@@ -1,17 +1,21 @@
 # nano_wait_auto.py
+
 import time
+from .learning import AdaptiveLearning
 from .core import NanoWait, PROFILES
 from .telemetry import TelemetrySession
 from .utils import log_message
-from .nano_wait import has_internet  # importamos a função
+from .nano_wait import has_internet
 
 _ENGINE = None
+
 
 def _engine():
     global _ENGINE
     if _ENGINE is None:
         _ENGINE = NanoWait()
     return _ENGINE
+
 
 def wait_auto(
     t: float | None = None,
@@ -29,6 +33,8 @@ def wait_auto(
     if profile:
         nw.profile = PROFILES.get(profile, PROFILES["default"])
 
+    learning = AdaptiveLearning(nw.profile.name)
+
     verbose = verbose or nw.profile.verbose
 
     context = nw.snapshot_context(wifi)
@@ -45,7 +51,6 @@ def wait_auto(
 
     speed_value = nw.smart_speed(wifi)
 
-    # 🔥 Auto-detect internet aqui
     factor = (
         nw.compute_wait_wifi(speed_value, wifi, context=context)
         if wifi or has_internet()
@@ -58,6 +63,9 @@ def wait_auto(
     if t is not None:
         interval = min(interval, t)
 
+    # 🔥 APPLY LEARNING BIAS
+    bias = learning.get_bias()
+    interval *= bias
     interval = round(interval, 4)
 
     telemetry_session.record(factor=factor, interval=interval)
@@ -66,6 +74,7 @@ def wait_auto(
         print(
             f"[NanoWait AUTO | {nw.profile.name}] "
             f"factor={factor:.2f} "
+            f"bias={bias:.3f} "
             f"wait={interval:.4f}s"
         )
 
@@ -73,10 +82,17 @@ def wait_auto(
         log_message(
             f"[NanoWait AUTO | {nw.profile.name}] "
             f"factor={factor:.2f} "
+            f"bias={bias:.3f} "
             f"wait={interval:.4f}s"
         )
 
-    time.sleep(interval)
+    try:
+        time.sleep(interval)
+        learning.update(True, interval, interval)
+    except Exception:
+        learning.update(False, interval, interval)
+        raise
+
     telemetry_session.stop()
 
     if explain:
@@ -85,7 +101,8 @@ def wait_auto(
             "factor": factor,
             "cpu_score": cpu_score,
             "wifi_score": wifi_score,
-            "profile": nw.profile.name
+            "profile": nw.profile.name,
+            "bias": bias
         }
 
     return interval

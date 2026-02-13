@@ -8,6 +8,7 @@ nano_wait/core.py
 nano_wait/dashboard.py
 nano_wait/exceptions.py
 nano_wait/explain.py
+nano_wait/learning.py
 nano_wait/nano_wait.py
 nano_wait/nano_wait_async.py
 nano_wait/nano_wait_auto.py
