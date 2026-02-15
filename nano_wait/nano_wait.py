@@ -1,8 +1,9 @@
 import time
 import queue
-from typing import overload
-from datetime import datetime
 import socket
+from typing import overload, Callable
+from datetime import datetime
+
 from .learning import AdaptiveLearning
 from .core import NanoWait, PROFILES
 from .utils import log_message, get_speed_value
@@ -13,17 +14,15 @@ from .dashboard import TelemetryDashboard
 
 _ENGINE = None
 
+
 def _engine():
     global _ENGINE
     if _ENGINE is None:
         _ENGINE = NanoWait()
     return _ENGINE
 
-# --------------------------
-# Função utilitária internet
-# --------------------------
+
 def has_internet(host="8.8.8.8", port=53, timeout=1):
-    """Detecta se há internet ativa."""
     try:
         socket.setdefaulttimeout(timeout)
         socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
@@ -31,24 +30,18 @@ def has_internet(host="8.8.8.8", port=53, timeout=1):
     except Exception:
         return False
 
-# --------------------------------------
-# Public API
-# --------------------------------------
+
 @overload
 def wait(t: float, **kwargs) -> float: ...
 
-@overload
-def wait(*, until: str, **kwargs): ...
 
 @overload
-def wait(*, icon: str, **kwargs): ...
+def wait(until: Callable, **kwargs) -> bool: ...
+
 
 def wait(
-    t: float | None = None,
+    t: float | Callable | None = None,
     *,
-    until: str | None = None,
-    icon: str | None = None,
-    region=None,
     timeout: float = 15.0,
     wifi: str | None = None,
     speed: str | float = "normal",
@@ -59,20 +52,88 @@ def wait(
     telemetry: bool = False,
     profile: str | None = None
 ):
-    """
-    Adaptive wait function. By default, profile="auto" is used.
-    """
 
     nw = _engine()
 
-    # 🔹 default para auto
     if not profile:
         profile = "auto"
 
     nw.profile = PROFILES.get(profile, PROFILES["default"])
     learning = AdaptiveLearning(nw.profile.name)
-
     verbose = verbose or nw.profile.verbose
+
+    # ------------------------
+    # CONDITION MODE
+    # ------------------------
+    if callable(t):
+
+        if timeout <= 0:
+            return False
+
+        context = nw.snapshot_context(wifi)
+        cpu_score = context["pc_score"]
+        wifi_score = context["wifi_score"]
+
+        telemetry_queue = queue.Queue() if telemetry else None
+        if telemetry:
+            TelemetryDashboard(telemetry_queue).start()
+
+        telemetry_session = TelemetrySession(
+            enabled=telemetry,
+            cpu_score=cpu_score,
+            wifi_score=wifi_score,
+            profile=nw.profile.name,
+            queue=telemetry_queue
+        )
+        telemetry_session.start()
+
+        speed_value = nw.smart_speed(wifi) if smart else get_speed_value(speed)
+
+        start = time.time()
+        attempts = 0
+
+        while time.time() - start < timeout:
+
+            if t():
+                telemetry_session.stop()
+                learning.update(True, 1.0, 1.0)
+                return True
+
+            factor = (
+                nw.compute_wait_wifi(speed_value, wifi, context=context)
+                if wifi or has_internet()
+                else nw.compute_wait_no_wifi(speed_value, context=context)
+            )
+
+            interval = max(0.05, min(0.5, 1 / factor))
+            interval = nw.apply_profile(interval)
+
+            bias = learning.get_bias()
+            interval *= bias
+            interval = round(interval, 4)
+
+            telemetry_session.record(factor=factor, interval=interval)
+
+            if verbose:
+                print(
+                    f"[NanoWait | {nw.profile.name}] "
+                    f"until polling={interval:.3f}s "
+                    f"attempt={attempts}"
+                )
+
+            time.sleep(interval)
+            attempts += 1
+
+        telemetry_session.stop()
+        learning.update(False, 1.0, 1.0)
+        return False
+
+    # ------------------------
+    # NORMAL TIME MODE
+    # ------------------------
+
+    if t is not None and not isinstance(t, (int, float)):
+        raise TypeError("wait() requires a float time or a callable condition")
 
     context = nw.snapshot_context(wifi)
     cpu_score = context["pc_score"]
@@ -103,30 +164,11 @@ def wait(
     wait_time = round(max(0.05, min(raw_wait, t or raw_wait)), 3)
     wait_time = nw.apply_profile(wait_time)
 
-    # 🔥 APPLY LEARNED BIAS
     bias = learning.get_bias()
     wait_time *= bias
     wait_time = round(wait_time, 4)
 
     telemetry_session.record(factor=factor, interval=wait_time)
-
-    if verbose:
-        print(
-            f"[NanoWait | {nw.profile.name}] "
-            f"factor={factor:.2f} "
-            f"bias={bias:.3f} "
-            f"wait={wait_time:.3f}s"
-        )
-
-    if log:
-        log_message(
-            f"[NanoWait | {nw.profile.name}] "
-            f"factor={factor:.2f} "
-            f"bias={bias:.3f} "
-            f"wait={wait_time:.3f}s"
-        )
-
-    telemetry_session.stop()
 
     try:
         time.sleep(wait_time)
@@ -134,6 +176,8 @@ def wait(
     except Exception:
         learning.update(False, raw_wait, wait_time)
         raise
+
+    telemetry_session.stop()
 
     if explain:
         return ExplainReport(

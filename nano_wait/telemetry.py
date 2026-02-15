@@ -2,8 +2,12 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 from datetime import datetime
 import queue as std_queue
+from time import time
 
 from .usage import log_usage_event
+
+__version__ = "5.3.0"
+
 
 @dataclass(frozen=True)
 class TelemetryEvent:
@@ -23,26 +27,18 @@ class TelemetrySession:
     profile: Optional[str] = None
 
     events: List[TelemetryEvent] = field(default_factory=list)
-
     queue: Optional[std_queue.Queue] = None
 
     def start(self):
         if not self.enabled:
             return
-
-        from time import time
         self.start_time = time()
-
-        # 🔹 ONE usage event per execution (MAU signal)
         log_usage_event("session_start", __version__)
 
     def stop(self):
         if not self.enabled:
             return
-
-        from time import time
         self.end_time = time()
-
         if self.queue:
             self.queue.put("__STOP__")
 
