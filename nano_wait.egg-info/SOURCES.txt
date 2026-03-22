@@ -6,13 +6,16 @@ nano_wait/__main__.py
 nano_wait/cli.py
 nano_wait/core.py
 nano_wait/dashboard.py
+nano_wait/decorators.py
 nano_wait/exceptions.py
+nano_wait/execution.py
 nano_wait/explain.py
 nano_wait/learning.py
 nano_wait/nano_wait.py
 nano_wait/nano_wait_async.py
 nano_wait/nano_wait_auto.py
 nano_wait/nano_wait_pool.py
+nano_wait/pipeline.py
 nano_wait/telemetry.py
 nano_wait/usage.py
 nano_wait/utils.py

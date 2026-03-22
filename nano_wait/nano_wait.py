@@ -22,6 +22,11 @@ def _engine():
     return _ENGINE
 
 
+# 🔥 NEW: scheduler abstraction (base do execution layer)
+def schedule(interval: float, **kwargs):
+    return wait(interval, **kwargs)
+
+
 def has_internet(host="8.8.8.8", port=53, timeout=1):
     try:
         socket.setdefaulttimeout(timeout)

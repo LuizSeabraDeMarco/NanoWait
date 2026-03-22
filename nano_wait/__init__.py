@@ -1,10 +1,15 @@
 # nano_wait/__init__.py
-__version__ = "5.0.3"  # ou qualquer versão que você queira testar
+
+__version__ = "5.1.0"
 
 from .nano_wait import wait, NanoWait
 from .nano_wait_async import wait_async
 from .nano_wait_pool import wait_pool, wait_pool_async
 from .nano_wait_auto import wait_auto
+
+# 🔥 NOVO
+from .execution import execute, ExecutionResult
+from .decorators import retry
 
 __all__ = [
     "wait",
@@ -13,4 +18,8 @@ __all__ = [
     "wait_async",
     "wait_pool",
     "wait_pool_async",
+    # NEW
+    "execute",
+    "ExecutionResult",
+    "retry",
 ]

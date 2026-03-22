@@ -18,7 +18,7 @@ setup(
     # Basic metadata
     # ----------------------------------------
     name="nano_wait",  # mantém compatibilidade
-    version="5.0.3",   # 🚨 BREAKING CHANGE (vision removido)
+    version="5.1.0",   # 🚨 BREAKING CHANGE (vision removido)
 
     license="MIT",
     author="Luiz Filipe Seabra de Marco",
