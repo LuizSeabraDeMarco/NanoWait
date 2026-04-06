@@ -1,4 +1,4 @@
-# 🚀 NanoWait — Execution Layer for Python
+# 🚀 NanoWait — Adaptive Execution Engine for Python
 
 **NanoWait is not a sleep function.
 It’s an adaptive execution engine.**
@@ -7,7 +7,7 @@ It’s an adaptive execution engine.**
 
 ---
 
-# 📦 Instalação
+# 📦 Installation
 
 ```bash
 pip install nano-wait
@@ -17,17 +17,17 @@ pip install nano-wait
 
 # ⚡ Quick Start
 
-## 1. Smart Wait (clássico, mas melhor)
+## 1. Smart Wait (better than sleep)
 
 ```python
 from nano_wait import wait
 
-wait(2)  # adaptativo baseado no seu PC/Wi-Fi
+wait(2)  # adapts to your CPU, memory and Wi-Fi
 ```
 
 ---
 
-## 2. Esperar até algo acontecer
+## 2. Wait until something happens
 
 ```python
 wait(lambda: button_is_visible(), timeout=10)
@@ -35,19 +35,19 @@ wait(lambda: button_is_visible(), timeout=10)
 
 ---
 
-## 3. Execution Layer (🔥 principal)
+## 3. Execution Engine (🔥 core feature)
 
 ```python
 from nano_wait import execute
 
 result = execute(lambda: fetch_data())
 
-print(result)
+print(result.success)
 ```
 
 ---
 
-## 4. Retry automático
+## 4. Retry (clean and powerful)
 
 ```python
 from nano_wait import retry
@@ -59,28 +59,40 @@ def click_button():
 
 ---
 
+## 5. 🤖 Agent (NEW — experimental)
+
+```python
+from nano_wait import Agent
+
+agent = Agent(verbose=True)
+agent.run("click login")
+```
+
+> High-level automation layer (future AI-ready interface)
+
+---
+
 # 🧠 Core Concepts
 
 ## 1. Adaptive Wait
 
-NanoWait ajusta automaticamente o tempo com base em:
+NanoWait dynamically adjusts timing based on:
 
 * CPU usage
-* Memory usage
+* Memory pressure
 * Wi-Fi signal
 * Execution profile
-* Histórico (learning)
+* Historical learning
 
 ---
 
 ## 2. Execution Engine
 
-O NanoWait não só espera — ele **executa com inteligência**:
+NanoWait doesn’t just wait — it **executes with intelligence**:
 
 ```python
 execute(
     fn,
-    until=lambda result: result == "OK",
     timeout=10,
     interval=0.2
 )
@@ -90,13 +102,25 @@ execute(
 
 ## 3. Scheduler
 
-Internamente:
+Internally:
 
 ```python
 schedule(interval)
 ```
 
-→ substitui `time.sleep()` com inteligência adaptativa.
+→ replaces `time.sleep()` with adaptive timing.
+
+---
+
+## 4. Agent Layer (NEW)
+
+```python
+agent.run("click login button")
+```
+
+NanoWait is evolving into:
+
+> 🧠 a system that **observes → decides → acts**
 
 ---
 
@@ -105,8 +129,6 @@ schedule(interval)
 ---
 
 ## `wait()`
-
-### Assinatura
 
 ```python
 wait(
@@ -125,7 +147,7 @@ wait(
 
 ---
 
-### Modos
+### Modes
 
 #### ⏱ Time Mode
 
@@ -141,37 +163,32 @@ wait(lambda: is_ready(), timeout=10)
 
 ---
 
-## `execute()` ⭐ (MAIN FEATURE)
+## `execute()` ⭐
 
 ```python
 execute(
-    fn: Callable,
-    until: Callable | None = None,
-    retry: bool = True,
-    timeout: float = 10.0,
-    interval: float = 0.1,
-    **kwargs
+    fn,
+    timeout=10,
+    interval=0.2,
+    profile=None,
+    verbose=False
 )
 ```
 
 ---
 
-### Exemplo real
+### Example
 
 ```python
 def fetch():
     return api.get_data()
 
-result = execute(
-    fetch,
-    until=lambda r: r.status == 200,
-    timeout=5
-)
+result = execute(fetch, timeout=5)
 ```
 
 ---
 
-### Retorno
+### Return
 
 ```python
 ExecutionResult(
@@ -184,7 +201,7 @@ ExecutionResult(
 
 ---
 
-## `retry` decorator
+## `retry`
 
 ```python
 @retry(timeout=5, interval=0.2)
@@ -194,12 +211,22 @@ def connect():
 
 ---
 
-# ⚙️ Perfis de Execução
+## `Agent` (experimental)
 
 ```python
-profile="ci"       # rápido e agressivo
-profile="testing"  # balanceado
-profile="rpa"      # mais estável
+agent = Agent()
+agent.run("wait")
+agent.run("click submit")
+```
+
+---
+
+# ⚙️ Execution Profiles
+
+```python
+profile="ci"       # fast & aggressive
+profile="testing"  # balanced
+profile="rpa"      # stable & safe
 ```
 
 ---
@@ -210,24 +237,24 @@ profile="rpa"      # mais estável
 wait(2, smart=True)
 ```
 
-Ajusta automaticamente baseado no ambiente:
+Automatically adapts to:
 
-* PC lento → espera mais
-* PC rápido → espera menos
+* slow machines → longer waits
+* fast machines → shorter waits
 
 ---
 
-# 📊 Telemetry (Debug visual)
+# 📊 Telemetry
 
 ```python
 wait(2, telemetry=True)
 ```
 
-Mostra:
+Displays:
 
-* Adaptive factor
-* Intervalos
-* Ajustes em tempo real
+* adaptive factor
+* intervals
+* real-time adjustments
 
 ---
 
@@ -238,18 +265,18 @@ report = wait(2, explain=True)
 print(report)
 ```
 
-Retorna:
+Returns:
 
-* tempo final
-* fator usado
-* CPU/Wi-Fi score
-* decisões internas
+* final wait time
+* adaptive factor
+* CPU/Wi-Fi scores
+* internal decisions
 
 ---
 
 # 🤖 CLI
 
-## Wait normal
+## Basic
 
 ```bash
 nano-wait 2
@@ -281,7 +308,7 @@ nano-wait --auto
 
 ---
 
-## 🔥 Execution via CLI
+## ⚙️ Execution
 
 ```bash
 nano-wait --exec "lambda: 1+1"
@@ -289,7 +316,15 @@ nano-wait --exec "lambda: 1+1"
 
 ---
 
-# 🧩 Exemplos Reais
+## 🤖 Agent (NEW)
+
+```bash
+nano-wait --agent "click login"
+```
+
+---
+
+# 🧩 Real Use Cases
 
 ---
 
@@ -298,7 +333,6 @@ nano-wait --exec "lambda: 1+1"
 ```python
 execute(
     lambda: driver.find_element("#btn").click(),
-    retry=True,
     timeout=5
 )
 ```
@@ -310,7 +344,7 @@ execute(
 ```python
 execute(
     lambda: requests.get(url),
-    until=lambda r: r.status_code == 200
+    timeout=5
 )
 ```
 
@@ -328,13 +362,15 @@ def open_app():
 
 # 🧠 Learning Engine
 
-NanoWait aprende automaticamente:
+NanoWait learns from execution:
 
-* Se demorou mais que o esperado
-* Se houve timeout
-* Ajusta futuras execuções
+* delays
+* failures
+* timeouts
 
-Arquivo salvo em:
+Improving future runs automatically.
+
+Stored at:
 
 ```bash
 ~/.nano_wait_learning.json
@@ -342,33 +378,49 @@ Arquivo salvo em:
 
 ---
 
-# 🔥 Diferencial
+# 🔥 Why NanoWait?
 
-NanoWait combina:
+Most systems separate:
 
 * `time.sleep()` ❌
 * retry ❌
 * polling ❌
 
-em um único sistema:
+NanoWait unifies everything:
 
 ✅ Adaptive Scheduler
 ✅ Execution Engine
-✅ Self-learning
+✅ Learning System
 ✅ Telemetry
+✅ Agent Layer (new)
 
 ---
 
 # 🚀 Roadmap
 
-* [ ] `execute_async`
+* [ ] AI-powered Agent (LLM integration)
+* [ ] Vision integration (`nano-wait-vision`)
+* [ ] execute_async
 * [ ] circuit breaker
 * [ ] error classification
-* [ ] integração com visão computacional (NanoWait Vision)
 
 ---
 
-# 💡 Filosofia
+# 💡 Philosophy
 
 > “Don’t wait blindly.
 > Execute intelligently.”
+
+---
+
+# ⚡ Final insight (isso aqui é o diferencial real)
+
+NanoWait is evolving from:
+
+> a timing utility
+
+to:
+
+> 🧠 an adaptive execution system for real-world automation
+
+---
