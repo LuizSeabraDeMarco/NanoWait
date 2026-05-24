@@ -78,34 +78,27 @@ def wait(
 ) -> Union[float, bool, ExplainReport]:
     """
     Executa uma espera adaptativa baseada em tempo ou condição.
-    
-    :param t: Tempo em segundos ou uma função de condição (lambda).
-    :param timeout: Tempo máximo de espera para condições.
-    :param wifi: SSID específico para monitorar sinal de rede.
-    :param speed: Fator de velocidade ("slow", "normal", "fast", "ultra").
-    :param smart: Habilita ajuste automático baseado em contexto de hardware.
-    :param verbose: Ativa logs no console.
-    :param log: Ativa gravação em arquivo de log.
-    :param explain: Retorna um relatório detalhado da decisão de timing.
-    :param telemetry: Habilita dashboard de telemetria em tempo real.
-    :param profile: Perfil de execução ("ci", "testing", "rpa").
     """
     nw = _get_engine(profile)
-    learning = AdaptiveLearning(nw.profile.name)
     verbose = verbose or nw.profile.verbose
     
-    # Snapshot inicial do ambiente
-    context = nw.snapshot_context(wifi)
-    telemetry_session = _setup_telemetry(nw, context, telemetry)
-    
-    # Resolução de velocidade
+    # Resolução de velocidade (fator global para a chamada)
     speed_value = nw.smart_speed(wifi) if smart else get_speed_value(speed)
 
     # --- MODO CONDIÇÃO (CALLABLE) ---
     if callable(t):
         if timeout <= 0: return False
+        
+        # MUDANÇA: Movido para fora do loop para evitar overhead repetitivo
+        learning = AdaptiveLearning(nw.profile.name)
+        context = nw.snapshot_context(wifi)
+        telemetry_session = _setup_telemetry(nw, context, telemetry)
+        
         start_time = time.time()
         attempts = 0
+        
+        # MUDANÇA: Cache de bias para evitar I/O de leitura no loop
+        bias = learning.get_bias()
         
         while (time.time() - start_time) < timeout:
             try:
@@ -117,15 +110,16 @@ def wait(
                 if verbose: print(f"[NanoWait] Condition Error: {e}")
             
             # Cálculo de intervalo adaptativo para polling
-            # Baseado na saúde do sistema para não sobrecarregar
             interval = nw.compute_wait(0.1, speed_value, context)
-            interval = max(0.05, min(0.5, interval)) # Clamping de segurança
             
-            # Aplicação de viés aprendido
-            bias = learning.get_bias()
+            # MUDANÇA: Piso reduzido de 0.05s para 0.02s para maior agilidade
+            interval = max(0.02, min(0.5, interval)) 
+            
             interval = round(interval * bias, 4)
             
-            telemetry_session.record(factor=speed_value, interval=interval)
+            if telemetry:
+                telemetry_session.record(factor=speed_value, interval=interval)
+            
             if verbose:
                 print(f"[NanoWait | {nw.profile.name}] Polling: {interval:.3f}s | Attempt: {attempts}")
             
@@ -140,11 +134,14 @@ def wait(
     if t is not None and not isinstance(t, (int, float)):
         raise TypeError("wait() requires float, callable, or None")
 
-    # Calcula tempo adaptativo final
+    # MUDANÇA: Inicialização movida para garantir snapshot único por chamada
+    learning = AdaptiveLearning(nw.profile.name)
+    context = nw.snapshot_context(wifi)
+    telemetry_session = _setup_telemetry(nw, context, telemetry)
+
     base_t = float(t) if t is not None else 1.0
     adaptive_wait = nw.compute_wait(base_t, speed_value, context)
     
-    # Garante que não esperamos mais do que o solicitado se não for smart
     if not smart and t is not None:
         adaptive_wait = min(adaptive_wait, t)
     
@@ -152,7 +149,8 @@ def wait(
     bias = learning.get_bias()
     final_wait = round(adaptive_wait * bias, 4)
 
-    telemetry_session.record(factor=speed_value, interval=final_wait)
+    if telemetry:
+        telemetry_session.record(factor=speed_value, interval=final_wait)
     
     try:
         time.sleep(final_wait)

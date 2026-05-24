@@ -1,23 +1,22 @@
-# learning.py
 import json
 import os
 import threading
 from pathlib import Path
 
-
 class AdaptiveLearning:
-    """
-    Self-calibrating bias engine using EMA.
-    Learns optimal wait scaling based on execution success.
-    """
-
     _lock = threading.Lock()
     _storage_path = Path.home() / ".nano_wait_learning.json"
+    # MUDANÇA: Adicionado cache de dados para evitar I/O repetitivo
+    _cached_data = None
 
     def __init__(self, profile: str):
         self.profile = profile
         self.alpha = 0.1  # EMA smoothing factor
-        self._data = self._load()
+        
+        # MUDANÇA: Carrega do disco apenas se o cache estiver vazio
+        if AdaptiveLearning._cached_data is None:
+            AdaptiveLearning._cached_data = self._load()
+        self._data = AdaptiveLearning._cached_data
 
         if profile not in self._data["profiles"]:
             self._data["profiles"][profile] = {

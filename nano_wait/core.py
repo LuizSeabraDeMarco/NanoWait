@@ -61,7 +61,8 @@ class NanoWait:
         """
         try:
             import psutil
-            cpu = psutil.cpu_percent(interval=0.1) # Reduzido interval para maior responsividade
+            # MUDANÇA: alterado interval de 0.1 para None para evitar bloqueio de 100ms
+            cpu = psutil.cpu_percent(interval=None) 
             mem = psutil.virtual_memory().percent
             
             # Penalidade não linear para estresse alto
