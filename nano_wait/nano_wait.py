@@ -4,12 +4,10 @@ NanoWait Main API
 Interface de alto nível para o motor de execução adaptativo.
 Suporta esperas baseadas em tempo, condições, telemetria e contexto.
 
-Melhorias v7:
-- Motor singleton por perfil (evita perfil errado em multithread)
-- Polling com backoff exponencial suave (reduz CPU em waits longos)
-- `wait_until()` com mensagem de erro customizável
-- `has_internet()` com timeout configurável
-- `timed_wait()` context manager para medir blocos de código
+Comportamento garantido:
+- wait(2)              → espera PELO MENOS 2s (só aumenta se sistema lento)
+- wait(2, smart=True)  → espera adaptativa (pode ser menor em sistema ocioso)
+- wait(lambda: x > 0)  → polling inteligente até condição ser True ou timeout
 """
 
 import time
@@ -109,16 +107,18 @@ def wait(
     Executa uma espera adaptativa baseada em tempo ou condição.
 
     Modos:
-        wait(2.0)                 → espera adaptativa de ~2s
+        wait(2.0)                 → espera pelo menos 2s (pode ser mais se sistema lento)
+        wait(2.0, smart=True)     → espera adaptativa (pode ser menos em sistema ocioso)
         wait(lambda: x > 0)      → polling até condição ser True ou timeout
         wait(None)                → espera automática baseada no sistema
 
     Args:
         t:                Tempo (float) ou condição (callable) ou None para auto.
         timeout:          Tempo máximo de espera para condição (callable).
-        wifi:             SSID da rede para medir sinal (opcional).
+        wifi:             SSID da rede para medir sinal (opcional). Requer nano-wait[wifi].
         speed:            Fator de velocidade: "slow" | "normal" | "fast" | "ultra" | float.
-        smart:            Detecta automaticamente a velocidade ideal pelo hardware.
+        smart:            Se True, pode reduzir o tempo em sistemas ociosos.
+                          Se False (padrão), nunca entrega menos do que o pedido.
         verbose:          Imprime logs de diagnóstico.
         log:              Salva logs em nano_wait.log.
         explain:          Retorna ExplainReport em vez do tempo de espera.
@@ -127,8 +127,8 @@ def wait(
         raise_on_timeout: Se True, lança WaitTimeoutError quando callable não resolve.
 
     Returns:
-        float:       Tempo real de espera (modo tempo).
-        bool:        True se condição satisfeita, False se timeout (modo callable).
+        float:         Tempo real de espera (modo tempo).
+        bool:          True se condição satisfeita, False se timeout (modo callable).
         ExplainReport: Relatório detalhado (quando explain=True, modo tempo).
     """
     nw = _get_engine(profile)
@@ -149,8 +149,9 @@ def wait(
         attempts   = 0
         bias       = learning.get_bias()
 
-        # Parâmetros de backoff suave
-        base_interval = nw.compute_wait(nw.profile.poll_interval, speed_value, context)
+        # Intervalo base de polling — aqui smart=True porque é o intervalo
+        # interno do polling, não um tempo de espera garantido ao usuário
+        base_interval = nw.compute_wait(nw.profile.poll_interval, speed_value, context, smart=True)
         base_interval = max(0.01, min(0.3, base_interval))
 
         while (time.perf_counter() - start_time) < timeout:
@@ -197,12 +198,11 @@ def wait(
     telemetry_session = _setup_telemetry(nw, context, telemetry)
 
     base_t        = float(t) if t is not None else 1.0
-    adaptive_wait = nw.compute_wait(base_t, speed_value, context)
 
-    # Garante que não ultrapassamos o tempo solicitado (quando não smart)
-    if not smart and t is not None:
-        adaptive_wait = min(adaptive_wait, float(t))
-
+    # Passa smart para compute_wait:
+    # - smart=False → nunca entrega menos do que base_t
+    # - smart=True  → pode reduzir em sistemas ociosos
+    adaptive_wait = nw.compute_wait(base_t, speed_value, context, smart=smart)
     adaptive_wait = max(0.005, adaptive_wait)
 
     bias       = learning.get_bias()
@@ -211,8 +211,9 @@ def wait(
     if telemetry:
         telemetry_session.record(factor=speed_value, interval=final_wait)
     if verbose:
+        mode_label = "smart" if smart else "normal"
         print(
-            f"[NanoWait | {nw.profile.name}] "
+            f"[NanoWait | {nw.profile.name} | {mode_label}] "
             f"requested={base_t}s → final={final_wait}s "
             f"(speed={speed_value:.2f}, bias={bias:.3f})"
         )
@@ -288,8 +289,9 @@ def timed_wait(label: str = "block", verbose: bool = True):
     Context manager para medir o tempo de execução de um bloco de código.
 
     Exemplo:
-        with timed_wait("login"):
+        with timed_wait("login") as info:
             driver.find_element(...).click()
+        print(f"Login levou {info['duration']:.3f}s")
 
     Yields:
         dict com 'label' e 'duration' (preenchido ao sair do bloco).

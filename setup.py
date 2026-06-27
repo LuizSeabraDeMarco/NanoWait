@@ -1,5 +1,5 @@
 # ============================================
-# setup.py — Nano-Wait (CORE ONLY)
+# setup.py — nano-wait
 #
 # PT: Configuração do pacote para PyPI
 # EN: PyPI package configuration file
@@ -7,9 +7,6 @@
 
 from setuptools import setup, find_packages
 
-# ----------------------------------------
-# Read long description from README
-# ----------------------------------------
 with open("README.md", "r", encoding="utf-8") as arq:
     readme = arq.read()
 
@@ -17,8 +14,8 @@ setup(
     # ----------------------------------------
     # Basic metadata
     # ----------------------------------------
-    name="nano_wait",  # mantém compatibilidade
-    version="6.2.0",   # 🚨 BREAKING CHANGE (vision removido)
+    name="nano-wait",      # padronizado com hífen (pip install nano-wait)
+    version="7.0.0",
 
     license="MIT",
     author="Luiz Filipe Seabra de Marco",
@@ -26,14 +23,14 @@ setup(
 
     description=(
         "Adaptive waiting and execution engine — "
-        "replaces time.sleep() with system-aware, deterministic waiting."
+        "replaces time.sleep() with system-aware, predictable waiting."
     ),
 
     long_description=readme,
     long_description_content_type="text/markdown",
 
     # ----------------------------------------
-    # PyPI search keywords (ATUALIZADOS)
+    # PyPI search keywords
     # ----------------------------------------
     keywords=[
         "automation",
@@ -42,13 +39,15 @@ setup(
         "execution engine",
         "system-aware",
         "deterministic automation",
-        "rpa core",
+        "rpa",
         "testing",
+        "selenium",
+        "playwright",
         "performance",
         "psutil",
-        "wifi awareness",
-        "system context",
         "sleep replacement",
+        "polling",
+        "retry",
     ],
 
     # ----------------------------------------
@@ -58,18 +57,21 @@ setup(
     include_package_data=True,
 
     # ----------------------------------------
-    # Core dependencies (ONLY core)
+    # Core dependencies — mínimo absoluto
     # ----------------------------------------
     install_requires=[
-        "psutil",   # CPU / memory context
-        "pywifi",   # optional Wi-Fi awareness (fails gracefully)
+        "psutil",
     ],
 
     # ----------------------------------------
-    # Optional dependency groups
+    # Grupos opcionais
     # ----------------------------------------
     extras_require={
-        # Development & tests (NOT for end users)
+        # Suporte a medição de sinal Wi-Fi (Windows)
+        "wifi": [
+            "pywifi",
+        ],
+        # Desenvolvimento e testes
         "dev": [
             "pytest",
             "pytest-mock",
@@ -101,6 +103,8 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
         "Operating System :: OS Independent",
     ],
 

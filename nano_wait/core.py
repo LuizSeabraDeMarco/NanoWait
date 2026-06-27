@@ -5,8 +5,12 @@ Base teórica: O NanoWait opera sob o princípio de "Observabilidade de Execuç�
 Diferente de um sleep estático, ele utiliza telemetria em tempo real (CPU, Memória, Rede)
 para calcular o "Custo de Oportunidade de Espera".
 
-Fórmula base:
+Fórmula base (modo smart=True):
     WaitTime = (BaseTime / (SystemHealth * SpeedFactor)) * ProfileAggressiveness
+
+Fórmula base (modo padrão, smart=False):
+    WaitTime = BaseTime * (1 + overload_penalty) * ProfileAggressiveness
+    — nunca entrega menos tempo do que o solicitado
 
 SystemHealth ∈ [0, 10]  — derivado de CPU + RAM
 SpeedFactor  ∈ [0.5, 6] — controlado pelo usuário ou autodetectado
@@ -36,8 +40,8 @@ PROFILES: Dict[str, ExecutionProfile] = {
     "testing":  ExecutionProfile("testing",  0.8, 0.7, 0.08, True),
     "rpa":      ExecutionProfile("rpa",      2.0, 0.5, 0.2,  False),
     "default":  ExecutionProfile("default",  1.0, 0.8, 0.1,  False),
-    "turbo":    ExecutionProfile("turbo",    0.25, 0.95, 0.01, False),  # novo: máxima velocidade
-    "safe":     ExecutionProfile("safe",     3.0, 0.3, 0.5,  False),  # novo: máxima estabilidade
+    "turbo":    ExecutionProfile("turbo",    0.25, 0.95, 0.01, False),
+    "safe":     ExecutionProfile("safe",     3.0, 0.3, 0.5,  False),
 }
 
 # ──────────────────────────────────────────────
@@ -48,14 +52,15 @@ class NanoWait:
     """
     Motor central que orquestra coleta de contexto e ajuste de timing.
 
-    Melhorias v7:
-    - cpu_percent com interval=0.1 apenas na inicialização (warmup correto)
-    - Cache de contexto com TTL de 2s para evitar coletas redundantes
-    - compute_wait_no_wifi e compute_wait_wifi implementados corretamente
-    - Suporte a `turbo` e `safe` profiles
+    Comportamento padrão (smart=False):
+    - wait(2) NUNCA entrega menos de 2s — só pode aumentar se o sistema estiver lento.
+    - Isso garante previsibilidade para testes e automação.
+
+    Comportamento smart (smart=True):
+    - Pode reduzir o tempo em sistemas ociosos e rápidos.
+    - Útil quando a espera é apenas uma "cortesia" ao sistema, não um requisito.
     """
 
-    # TTL para reuso de contexto (segundos)
     CONTEXT_TTL = 2.0
 
     def __init__(self, profile: Optional[str] = None):
@@ -64,11 +69,9 @@ class NanoWait:
         self._wifi_interface = None
         self._initialized_wifi = False
 
-        # Cache de contexto para evitar coletas redundantes
         self._ctx_cache: Optional[Dict[str, Any]] = None
         self._ctx_ts: float = 0.0
 
-        # Warmup do cpu_percent para zerar o contador interno do psutil
         try:
             import psutil
             psutil.cpu_percent(interval=0.1)
@@ -100,15 +103,12 @@ class NanoWait:
         """
         Score de performance do sistema [0, 10].
         10 = sistema ocioso e rápido; 0 = sistema sob estresse extremo.
-
-        Usa interval=None pois o warmup já foi feito no __init__.
         """
         try:
             import psutil
             cpu = psutil.cpu_percent(interval=None)
             mem = psutil.virtual_memory().percent
 
-            # Penalidade não-linear: estresse acima de 80% é agravado
             cpu_penalty = cpu / 10 + max(0, (cpu - 80) / 20)
             mem_penalty = mem / 10 + max(0, (mem - 85) / 15)
 
@@ -123,6 +123,7 @@ class NanoWait:
         """
         Força do sinal Wi-Fi [0, 10].
         Retorna 5.0 se não conseguir medir (valor neutro).
+        Requer instalação opcional: pip install nano-wait[wifi]
         """
         try:
             if self.system == "windows":
@@ -167,9 +168,7 @@ class NanoWait:
     def snapshot_context(self, ssid: Optional[str] = None) -> Dict[str, Any]:
         """
         Captura estado imutável do ambiente para análise determinística.
-
-        Usa cache com TTL de 2s para evitar coletas redundantes em loops
-        de polling curtos.
+        Usa cache com TTL de 2s para evitar coletas redundantes em loops de polling.
         """
         now = time.time()
         if self._ctx_cache is not None and (now - self._ctx_ts) < self.CONTEXT_TTL:
@@ -204,7 +203,7 @@ class NanoWait:
         return round(max(0.5, min(6.0, health / 2 + 0.5)), 2)
 
     # ──────────────────────────────────────────
-    # Cálculo de Espera
+    # Cálculo de Espera — CORRIGIDO
     # ──────────────────────────────────────────
 
     def compute_wait(
@@ -212,20 +211,37 @@ class NanoWait:
         base_time: float,
         speed_factor: float,
         context: Dict[str, Any],
+        smart: bool = False,
     ) -> float:
         """
         Lógica central: calcula o tempo final de espera.
 
-        WaitTime = base_time * adaptive_multiplier * aggressiveness
-        adaptive_multiplier = (10 - health) / speed_factor
+        Modo smart=False (padrão):
+            Nunca reduz abaixo do tempo pedido.
+            Só aumenta quando o sistema está sobrecarregado (health < 5).
+            Garante previsibilidade para testes e automação.
+
+            WaitTime = base_time * (1 + overload_penalty) * aggressiveness
+
+        Modo smart=True:
+            Pode reduzir o tempo em sistemas ociosos.
+            Útil quando a espera é uma cortesia, não um requisito.
+
+            WaitTime = base_time * adaptive_multiplier * aggressiveness
         """
         pc   = context["pc_score"]
         wifi = context["wifi_score"] if context["wifi_score"] is not None else 5.0
         health = (pc + wifi) / 2
 
-        # Quanto maior a saúde, menor o multiplicador
-        adaptive_multiplier = max(0.05, (10 - health) / max(0.1, speed_factor))
-        return self.apply_profile(base_time * adaptive_multiplier)
+        if smart:
+            # Pode reduzir: sistema saudável → espera menor
+            adaptive_multiplier = max(0.05, (10 - health) / max(0.1, speed_factor))
+            return self.apply_profile(base_time * adaptive_multiplier)
+        else:
+            # Nunca reduz: só penaliza sistema sobrecarregado (health < 5)
+            overload_penalty = max(0.0, (5.0 - health) / 5.0)
+            multiplier = 1.0 + overload_penalty
+            return self.apply_profile(base_time * multiplier)
 
     def compute_wait_no_wifi(
         self,
@@ -239,7 +255,7 @@ class NanoWait:
         if context is None:
             context = self.snapshot_context()
         pc = context["pc_score"]
-        health = pc  # sem wi-fi, saúde = só CPU/RAM
+        health = pc
         return max(0.1, health / max(0.1, speed_factor))
 
     def compute_wait_wifi(

@@ -1,6 +1,8 @@
 psutil
-pywifi
 
 [dev]
 pytest
 pytest-mock
+
+[wifi]
+pywifi
